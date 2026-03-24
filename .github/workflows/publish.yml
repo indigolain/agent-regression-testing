@@ -25,6 +25,7 @@ jobs:
     needs: check
     if: needs.check.outputs.is_release == 'true'
     runs-on: ubuntu-latest
+    environment: npm
 
     permissions:
       contents: write
