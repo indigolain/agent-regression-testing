@@ -30,6 +30,10 @@
     "llm",
     "evaluation"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/indigolain/agent-regression-testing.git"
+  },
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^25.5.0",
