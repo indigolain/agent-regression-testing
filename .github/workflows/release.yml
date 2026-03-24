@@ -49,12 +49,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BRANCH="release/v${{ steps.version.outputs.version }}"
+          VERSION="${{ steps.version.outputs.version }}"
+          BRANCH="release/v$VERSION"
+          git push origin --delete "$BRANCH" 2>/dev/null || true
           git checkout -b "$BRANCH"
           git add package.json
-          git commit -m "v${{ steps.version.outputs.version }}"
+          git commit -m "v$VERSION"
           git push -u origin "$BRANCH"
           gh pr create \
-            --title "Release v${{ steps.version.outputs.version }}" \
-            --body "Bump version to v${{ steps.version.outputs.version }} (${{ inputs.bump }})" \
+            --title "Release v$VERSION" \
+            --body "Bump version to v$VERSION (${{ inputs.bump }})" \
             --label release
