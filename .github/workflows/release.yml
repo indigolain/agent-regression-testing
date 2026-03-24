@@ -18,6 +18,7 @@ jobs:
 
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
@@ -40,13 +41,20 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          npm version ${{ inputs.bump }} -m "v%s"
-          echo "tag=$(git describe --tags --abbrev=0)" >> "$GITHUB_OUTPUT"
+          npm version ${{ inputs.bump }} --no-git-tag-version
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Push tag
-        run: git push --follow-tags
-
-      - name: Create GitHub release
+      - name: Create release PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "${{ steps.version.outputs.tag }}" --generate-notes
+        run: |
+          BRANCH="release/v${{ steps.version.outputs.version }}"
+          git checkout -b "$BRANCH"
+          git add package.json
+          git commit -m "v${{ steps.version.outputs.version }}"
+          git push -u origin "$BRANCH"
+          gh pr create \
+            --title "Release v${{ steps.version.outputs.version }}" \
+            --body "Bump version to v${{ steps.version.outputs.version }} (${{ inputs.bump }})" \
+            --label release
