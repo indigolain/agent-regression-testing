@@ -1,0 +1,42 @@
+{
+  "name": "agent-regression-testing",
+  "version": "0.1.0",
+  "description": "A standalone library for AI agent regression testing using LLM-as-judge evaluation",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "agent-regression-testing": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "tsc"
+  },
+  "keywords": [
+    "agent",
+    "regression",
+    "testing",
+    "llm",
+    "evaluation"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "yaml": "2.8.3"
+  }
+}
