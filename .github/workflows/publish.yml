@@ -1,13 +1,29 @@
 name: Publish
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches: [main]
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      is_release: ${{ steps.check.outputs.is_release }}
+    steps:
+      - id: check
+        run: |
+          MSG="${{ github.event.head_commit.message }}"
+          if echo "$MSG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+          elif echo "$MSG" | grep -qE '^Merge pull request .* from .*/release/'; then
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
   publish:
-    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/')
+    needs: check
+    if: needs.check.outputs.is_release == 'true'
     runs-on: ubuntu-latest
 
     permissions:
