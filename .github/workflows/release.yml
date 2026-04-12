@@ -1,24 +1,20 @@
 name: Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      bump:
-        description: Version bump type
-        required: true
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
+  push:
+    branches: [main]
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    environment: npm
 
     permissions:
       contents: write
       pull-requests: write
+      id-token: write
 
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +25,7 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+          registry-url: https://registry.npmjs.org
 
       - run: pnpm install --frozen-lockfile
 
@@ -36,27 +33,24 @@ jobs:
 
       - run: pnpm test
 
-      - name: Bump version
-        id: version
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          npm version ${{ inputs.bump }} --no-git-tag-version
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Create release PR or publish
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          publish: npm publish --provenance --access public
+          version: pnpm version-packages
+          title: "chore: version packages"
+          commit: "chore: version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create release PR
+      - name: Create GitHub release
+        if: steps.changesets.outputs.published == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          BRANCH="release/v$VERSION"
-          git push origin --delete "$BRANCH" 2>/dev/null || true
-          git checkout -b "$BRANCH"
-          git add package.json
-          git commit -m "v$VERSION"
-          git push -u origin "$BRANCH"
-          gh pr create \
-            --title "Release v$VERSION" \
-            --body "Bump version to v$VERSION (${{ inputs.bump }})" \
-            --label release
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v$VERSION"
+          git tag "$TAG"
+          git push origin "$TAG"
+          gh release create "$TAG" --generate-notes
