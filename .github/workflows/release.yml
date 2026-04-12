@@ -33,11 +33,14 @@ jobs:
 
       - run: pnpm test
 
+      - name: Set npm provenance
+        run: npm config set provenance true
+
       - name: Create release PR or publish
         id: changesets
         uses: changesets/action@v1
         with:
-          publish: npm publish --provenance --access public
+          publish: pnpm changeset publish --access public
           version: pnpm version-packages
           title: "chore: version packages"
           commit: "chore: version packages"
