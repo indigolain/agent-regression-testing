@@ -1,5 +1,11 @@
 # agent-regression-testing
 
+## 0.1.12
+
+### Patch Changes
+
+- [#20](https://github.com/indigolain/agent-regression-testing/pull/20) [`da10d45`](https://github.com/indigolain/agent-regression-testing/commit/da10d45a2a1ae2fbb73cd02bccc45879c9a1114b) Thanks [@indigolain](https://github.com/indigolain)! - Add `engines` field to specify minimum Node.js version (>=22)
+
 ## 0.1.11
 
 ### Patch Changes
