@@ -33,7 +33,8 @@
     "regression",
     "testing",
     "llm",
-    "evaluation"
+    "evaluation",
+    "ai"
   ],
   "repository": {
     "type": "git",
