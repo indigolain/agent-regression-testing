@@ -1,5 +1,11 @@
 # agent-regression-testing
 
+## 0.1.13
+
+### Patch Changes
+
+- [#23](https://github.com/indigolain/agent-regression-testing/pull/23) [`1a56780`](https://github.com/indigolain/agent-regression-testing/commit/1a56780cc9916fe15f4565f1450f0e4781d0a0b2) Thanks [@indigolain](https://github.com/indigolain)! - Add `ai` keyword for npm discoverability
+
 ## 0.1.12
 
 ### Patch Changes
