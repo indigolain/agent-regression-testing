@@ -1,0 +1,37 @@
+name: Changeset Check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  changeset-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for changeset
+        run: |
+          # Get list of changed files in this PR
+          CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
+
+          # Check if any changeset files were added
+          CHANGESETS=$(echo "$CHANGED_FILES" | grep '^\.changeset/.*\.md$' | grep -v 'README.md' || true)
+
+          if [ -z "$CHANGESETS" ]; then
+            echo "::error::No changeset found. Please run 'pnpm changeset' to create one before merging."
+            echo ""
+            echo "A changeset is required for every PR. It describes the changes and determines the version bump."
+            echo ""
+            echo "To add a changeset:"
+            echo "  1. Run 'pnpm changeset'"
+            echo "  2. Select the type of change (patch/minor/major)"
+            echo "  3. Write a summary of the changes"
+            echo "  4. Commit the generated file"
+            exit 1
+          fi
+
+          echo "Changeset found:"
+          echo "$CHANGESETS"
