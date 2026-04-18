@@ -48,11 +48,16 @@
   "devDependencies": {
     "@changesets/changelog-github": "0.6.0",
     "@changesets/cli": "2.30.0",
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.6.0",
     "typescript": "^6.0.2",
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.4"
   },
   "dependencies": {
     "yaml": "2.8.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "vite": ">=7.3.2 <8"
+    }
   }
 }
