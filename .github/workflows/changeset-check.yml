@@ -20,6 +20,13 @@ jobs:
           # Get list of changed files in this PR
           CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
 
+          # Skip check if only .github files were changed
+          NON_GITHUB_FILES=$(echo "$CHANGED_FILES" | grep -v '^\.github/' || true)
+          if [ -z "$NON_GITHUB_FILES" ]; then
+            echo "Only .github files changed — skipping changeset check."
+            exit 0
+          fi
+
           # Check if any changeset files were added
           CHANGESETS=$(echo "$CHANGED_FILES" | grep '^\.changeset/.*\.md$' | grep -v 'README.md' || true)
 
