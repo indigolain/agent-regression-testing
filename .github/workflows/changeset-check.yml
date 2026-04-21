@@ -16,7 +16,15 @@ jobs:
           fetch-depth: 0
 
       - name: Check for changeset
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
+          # Skip check for dependabot PRs (automated dependency updates)
+          if [ "$PR_AUTHOR" = "dependabot[bot]" ]; then
+            echo "Dependabot PR — skipping changeset check."
+            exit 0
+          fi
+
           # Get list of changed files in this PR
           CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
 
