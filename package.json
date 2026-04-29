@@ -25,7 +25,7 @@
     "typecheck": "tsc --noEmit",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "pnpm build && changeset publish --access public",
+    "release": "pnpm build && changeset publish",
     "prepublishOnly": "tsc"
   },
   "keywords": [
