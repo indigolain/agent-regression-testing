@@ -1,5 +1,11 @@
 # agent-regression-testing
 
+## 0.1.15
+
+### Patch Changes
+
+- [#35](https://github.com/indigolain/agent-regression-testing/pull/35) [`81bca87`](https://github.com/indigolain/agent-regression-testing/commit/81bca87e67d2ed5494fff80aa102c75fb721da6c) Thanks [@indigolain](https://github.com/indigolain)! - Fix changeset publish command by removing unsupported --access flag
+
 ## 0.1.14
 
 ### Patch Changes
