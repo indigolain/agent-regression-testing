@@ -53,7 +53,7 @@
     "vitest": "^4.1.4"
   },
   "dependencies": {
-    "yaml": "2.8.3"
+    "yaml": "2.8.4"
   },
   "pnpm": {
     "overrides": {
