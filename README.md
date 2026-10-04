@@ -2,6 +2,26 @@
 
 A standalone library for AI agent regression testing using an LLM-as-judge approach with criteria scoring, keyword matching, and baseline regression detection.
 
+## Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Getting Started](#getting-started)
+  - [1. Initialize config files](#1-initialize-config-files)
+  - [2. Edit your test cases](#2-edit-your-test-cases)
+  - [3. Configure settings](#3-configure-settings)
+  - [4. Write your test runner](#4-write-your-test-runner)
+- [API](#api)
+  - [CLI](#cli)
+  - [Functions](#functions)
+- [Choosing a Judge](#choosing-a-judge)
+  - [`evaluationLLM` — text in, text out](#evaluationllm--text-in-text-out)
+  - [`structuredJudge` — one call, all criteria](#structuredjudge--one-call-all-criteria)
+  - [Example: Jev (TypeSafe System One) as the judge](#example-jev-typesafe-system-one-as-the-judge)
+- [Configuration Reference](#configuration-reference)
+- [Built-in Prompt Templates](#built-in-prompt-templates)
+- [License](#license)
+
 ## Features
 
 - **LLM-as-judge evaluation** — uses an injected LLM to evaluate agent responses against criteria
