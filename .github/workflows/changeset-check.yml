@@ -19,9 +19,11 @@ jobs:
         env:
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
-          # Skip check for dependabot PRs (automated dependency updates)
+          # Skip check for dependabot PRs: the dependabot-changeset workflow adds
+          # the changeset for them. Its push uses GITHUB_TOKEN, which does not
+          # re-trigger this workflow, so checking here would fail permanently.
           if [ "$PR_AUTHOR" = "dependabot[bot]" ]; then
-            echo "Dependabot PR — skipping changeset check."
+            echo "Dependabot PR — changeset added by dependabot-changeset workflow."
             exit 0
           fi
 
