@@ -2,6 +2,8 @@ export type {
   AgentFunction,
   ComparisonResult,
   ConfigFile,
+  CriterionResult,
+  CriterionVerdict,
   EvaluationConfig,
   EvaluationLLM,
   EvaluationResult,
@@ -9,6 +11,7 @@ export type {
   RetryConfig,
   RunnerConfig,
   ScoringWeights,
+  StructuredJudge,
   TestCase,
 } from "./types.js";
 

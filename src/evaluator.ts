@@ -2,6 +2,7 @@ import { DEFAULT_EVALUATION_PROMPT_JA, buildEvaluationPrompt } from "./prompts.j
 import { withRetry } from "./retry.js";
 import type {
   ComparisonResult,
+  CriterionResult,
   EvaluationConfig,
   EvaluationResult,
   TestCase,
@@ -73,14 +74,98 @@ export async function evaluateResponse(
 }
 
 /**
- * Uses LLM-as-judge to evaluate if criteria are met
+ * Uses LLM-as-judge to evaluate if criteria are met.
+ *
+ * Delegates to config.structuredJudge when set — one call for all criteria —
+ * and otherwise falls back to the per-criterion text prompt.
  */
 async function evaluateCriteria(
   question: string,
   response: string,
   criteria: string[],
   config: EvaluationConfig,
-): Promise<{ criterion: string; met: boolean; reasoning: string }[]> {
+): Promise<CriterionResult[]> {
+  if (config.structuredJudge) {
+    return evaluateCriteriaStructured(question, response, criteria, config);
+  }
+  if (!config.evaluationLLM) {
+    throw new Error(
+      "EvaluationConfig requires either evaluationLLM or structuredJudge",
+    );
+  }
+  return evaluateCriteriaWithPrompts(question, response, criteria, config);
+}
+
+/**
+ * Evaluates all criteria in a single structured-judge call.
+ */
+async function evaluateCriteriaStructured(
+  question: string,
+  response: string,
+  criteria: string[],
+  config: EvaluationConfig,
+): Promise<CriterionResult[]> {
+  const judge = config.structuredJudge;
+  if (!judge) {
+    throw new Error("evaluateCriteriaStructured called without a structuredJudge");
+  }
+
+  try {
+    const verdicts = await withRetry(
+      () => judge({ question, response, criteria }),
+      config.retryConfig,
+    );
+
+    if (verdicts.length !== criteria.length) {
+      throw new Error(
+        `structuredJudge returned ${verdicts.length} verdict(s) for ${criteria.length} criteria`,
+      );
+    }
+
+    return criteria.map((criterion, i) => {
+      const verdict = verdicts[i];
+      return {
+        criterion,
+        met: verdict.met,
+        reasoning: verdict.reasoning ?? describeConfidence(verdict.confidence),
+        ...(verdict.confidence === undefined
+          ? {}
+          : { confidence: verdict.confidence }),
+      };
+    });
+  } catch (error) {
+    console.error("Error evaluating criteria with structured judge", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return criteria.map((criterion) => ({
+      criterion,
+      met: false,
+      reasoning: `Evaluation error: ${message}`,
+    }));
+  }
+}
+
+/**
+ * Describes a verdict that carries no reasoning text of its own.
+ */
+function describeConfidence(confidence: number | undefined): string {
+  return confidence === undefined
+    ? "Evaluation reasoning not available"
+    : `Judge confidence: ${(confidence * 100).toFixed(1)}%`;
+}
+
+/**
+ * Evaluates each criterion with its own rendered text prompt.
+ */
+async function evaluateCriteriaWithPrompts(
+  question: string,
+  response: string,
+  criteria: string[],
+  config: EvaluationConfig,
+): Promise<CriterionResult[]> {
+  const evaluationLLM = config.evaluationLLM;
+  if (!evaluationLLM) {
+    throw new Error("evaluateCriteriaWithPrompts called without an evaluationLLM");
+  }
   const template = config.evaluationPromptTemplate ?? DEFAULT_EVALUATION_PROMPT_JA;
   const interCallDelay = config.interCallDelay ?? 500;
 
@@ -95,7 +180,7 @@ async function evaluateCriteria(
 
       try {
         const text = await withRetry(
-          () => config.evaluationLLM(prompt),
+          () => evaluationLLM(prompt),
           config.retryConfig,
         );
 
