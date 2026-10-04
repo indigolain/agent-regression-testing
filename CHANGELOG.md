@@ -1,5 +1,11 @@
 # agent-regression-testing
 
+## 0.1.16
+
+### Patch Changes
+
+- [#73](https://github.com/indigolain/agent-regression-testing/pull/73) [`39ce8c8`](https://github.com/indigolain/agent-regression-testing/commit/39ce8c8470059fcdf052d131dc44cd1943705884) Thanks [@indigolain](https://github.com/indigolain)! - Ignore local Claude Code state (`.claude/settings.local.json`, worktrees, session runtime files, `CLAUDE.local.md`) in `.gitignore`
+
 ## 0.1.15
 
 ### Patch Changes

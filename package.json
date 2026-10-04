@@ -1,6 +1,6 @@
 {
   "name": "agent-regression-testing",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "description": "A standalone library for AI agent regression testing using LLM-as-judge evaluation",
   "type": "module",
   "main": "./dist/index.js",
