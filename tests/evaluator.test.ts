@@ -6,8 +6,10 @@ import {
 } from "../src/evaluator.js";
 import type {
   ComparisonResult,
+  CriterionVerdict,
   EvaluationConfig,
   EvaluationResult,
+  StructuredJudge,
   TestCase,
 } from "../src/types.js";
 
@@ -192,6 +194,112 @@ describe("evaluateResponse", () => {
     expect(capturedPrompts[0]).toBe(
       "Custom: How do I deploy to Vercel? | Run vercel deploy from your project root. | Covers CLI deployment",
     );
+  });
+});
+
+describe("evaluateResponse with structuredJudge", () => {
+  const makeJudgeConfig = (
+    judge: StructuredJudge,
+    overrides?: Partial<EvaluationConfig>,
+  ): EvaluationConfig => ({
+    structuredJudge: judge,
+    retryConfig: { maxRetries: 1, initialDelay: 0, backoffMultiplier: 1, retryOnStatusCodes: [] },
+    ...overrides,
+  });
+
+  it("evaluates all criteria in a single call", async () => {
+    const testCase = makeTestCase();
+    const response =
+      "Use useState to track each field value and validate on onChange. Show error messages conditionally.";
+    const judge = vi.fn(async () => [
+      { met: true, reasoning: "Covers controlled inputs." },
+      { met: true, reasoning: "Covers error state." },
+    ]);
+    const config = makeJudgeConfig(judge);
+
+    const result = await evaluateResponse(testCase, response, config);
+
+    expect(judge).toHaveBeenCalledTimes(1);
+    expect(judge).toHaveBeenCalledWith({
+      question: testCase.question,
+      response,
+      criteria: testCase.expectedCriteria,
+    });
+    expect(result.criteriaResults).toEqual([
+      {
+        criterion: "Explains controlled components",
+        met: true,
+        reasoning: "Covers controlled inputs.",
+      },
+      {
+        criterion: "Mentions error state handling",
+        met: true,
+        reasoning: "Covers error state.",
+      },
+    ]);
+    expect(result.passed).toBe(true);
+  });
+
+  it("keeps confidence and derives reasoning when the judge omits it", async () => {
+    const testCase = makeTestCase();
+    const response = "Use useState and handle onChange validation errors.";
+    const verdicts: CriterionVerdict[] = [
+      { met: true, confidence: 0.912 },
+      { met: false, confidence: 0.4 },
+    ];
+    const config = makeJudgeConfig(vi.fn(async () => verdicts));
+
+    const result = await evaluateResponse(testCase, response, config);
+
+    expect(result.criteriaResults[0].confidence).toBe(0.912);
+    expect(result.criteriaResults[0].reasoning).toBe("Judge confidence: 91.2%");
+    expect(result.criteriaResults[1].met).toBe(false);
+    expect(result.criteriaResults[1].reasoning).toBe("Judge confidence: 40.0%");
+  });
+
+  it("takes precedence over evaluationLLM when both are set", async () => {
+    const testCase = makeTestCase({ expectedCriteria: ["Explains hooks"] });
+    const evaluationLLM = vi.fn(async () => "MET: NO\nREASONING: Should not run.");
+    const config = makeJudgeConfig(vi.fn(async () => [{ met: true, reasoning: "From judge." }]), {
+      evaluationLLM,
+    });
+
+    const result = await evaluateResponse(testCase, "Use useState for state.", config);
+
+    expect(evaluationLLM).not.toHaveBeenCalled();
+    expect(result.criteriaResults[0].reasoning).toBe("From judge.");
+  });
+
+  it("fails every criterion when the judge throws", async () => {
+    const testCase = makeTestCase();
+    const config = makeJudgeConfig(vi.fn().mockRejectedValue(new Error("Jev unreachable")));
+
+    const result = await evaluateResponse(testCase, "Some response text here.", config);
+
+    expect(result.criteriaResults).toHaveLength(2);
+    expect(result.criteriaResults.every((c) => !c.met)).toBe(true);
+    expect(result.criteriaResults[0].reasoning).toContain("Jev unreachable");
+  });
+
+  it("fails every criterion when the judge returns a mismatched verdict count", async () => {
+    const testCase = makeTestCase();
+    const config = makeJudgeConfig(vi.fn(async () => [{ met: true }]));
+
+    const result = await evaluateResponse(testCase, "Some response text here.", config);
+
+    expect(result.criteriaResults.every((c) => !c.met)).toBe(true);
+    expect(result.criteriaResults[0].reasoning).toContain(
+      "returned 1 verdict(s) for 2 criteria",
+    );
+  });
+
+  it("throws when neither judge is configured", async () => {
+    const testCase = makeTestCase();
+    const config = { interCallDelay: 0 } as EvaluationConfig;
+
+    await expect(
+      evaluateResponse(testCase, "Some response text here.", config),
+    ).rejects.toThrow("requires either evaluationLLM or structuredJudge");
   });
 });
 

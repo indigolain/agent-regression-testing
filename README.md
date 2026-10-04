@@ -2,6 +2,26 @@
 
 A standalone library for AI agent regression testing using an LLM-as-judge approach with criteria scoring, keyword matching, and baseline regression detection.
 
+## Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Getting Started](#getting-started)
+  - [1. Initialize config files](#1-initialize-config-files)
+  - [2. Edit your test cases](#2-edit-your-test-cases)
+  - [3. Configure settings](#3-configure-settings)
+  - [4. Write your test runner](#4-write-your-test-runner)
+- [API](#api)
+  - [CLI](#cli)
+  - [Functions](#functions)
+- [Choosing a Judge](#choosing-a-judge)
+  - [`evaluationLLM` — text in, text out](#evaluationllm--text-in-text-out)
+  - [`structuredJudge` — one call, all criteria](#structuredjudge--one-call-all-criteria)
+  - [Example: Jev (TypeSafe System One) as the judge](#example-jev-typesafe-system-one-as-the-judge)
+- [Configuration Reference](#configuration-reference)
+- [Built-in Prompt Templates](#built-in-prompt-templates)
+- [License](#license)
+
 ## Features
 
 - **LLM-as-judge evaluation** — uses an injected LLM to evaluate agent responses against criteria
@@ -9,6 +29,7 @@ A standalone library for AI agent regression testing using an LLM-as-judge appro
 - **Baseline regression detection** — compares results against a saved baseline to detect regressions
 - **YAML configuration** — define scoring weights, thresholds, retry settings, and file paths in a config file; test cases and baseline are loaded automatically
 - **Dependency injection** — consumers inject their own LLM and agent via simple function signatures
+- **Two judge interfaces** — a text LLM judge, or a structured judge that scores every criterion in one call and reports calibrated confidence
 
 ## Installation
 
@@ -177,7 +198,7 @@ Main test runner. Accepts test cases, an agent function, and an evaluation LLM. 
 
 #### `evaluateResponse(testCase, response, config)`
 
-Evaluates a single response against a test case using the LLM judge.
+Evaluates a single response against a test case using the configured judge — `structuredJudge` if set, otherwise `evaluationLLM`. See [Choosing a Judge](#choosing-a-judge).
 
 #### `compareWithBaseline(current, baseline, threshold?)`
 
@@ -199,6 +220,76 @@ Generic retry utility with exponential backoff.
 
 Substitutes `{{question}}`, `{{response}}`, and `{{criterion}}` placeholders in a prompt template.
 
+## Choosing a Judge
+
+The library accepts two judge interfaces. Supply exactly one — `structuredJudge` wins if both are set, and omitting both throws.
+
+### `evaluationLLM` — text in, text out
+
+```typescript
+type EvaluationLLM = (prompt: string) => Promise<string>;
+```
+
+Called **once per criterion** with `evaluationPromptTemplate` rendered, and must reply with `MET: YES|NO` and `REASONING:`. This is the right choice for chat models, which can explain themselves in prose. Note that calls are sequential and separated by `interCallDelay` (default 500ms), so a test case with five criteria makes five calls.
+
+### `structuredJudge` — one call, all criteria
+
+```typescript
+type StructuredJudge = (input: {
+  question: string;
+  response: string;
+  criteria: string[];
+}) => Promise<CriterionVerdict[]>;
+
+interface CriterionVerdict {
+  met: boolean;
+  reasoning?: string;   // defaults to a confidence summary
+  confidence?: number;  // calibrated probability, 0..1 — kept on the result
+}
+```
+
+Return **one verdict per criterion, in the same order as `criteria`**; a length mismatch fails the test case with a diagnostic rather than silently misaligning verdicts. `evaluationPromptTemplate` and `interCallDelay` do not apply — the judge owns its own prompting, and there is only one call to pace.
+
+Use this for judges that answer in structured values rather than text, or that can answer a whole batch of questions at once.
+
+### Example: Jev (TypeSafe System One) as the judge
+
+[Jev](https://typesafe.ai) answers a map of named yes/no (`noul`) questions in a single request and returns a calibrated probability for each, which maps onto `structuredJudge` directly:
+
+```typescript
+import { TypeSafeClient, noul } from "@typesafe-ai/sdk";
+import type { NoulQuestion } from "@typesafe-ai/sdk";
+import type { RunnerConfig, StructuredJudge } from "agent-regression-testing";
+
+const jev = new TypeSafeClient(); // reads TYPESAFE_API_KEY
+
+const jevJudge: StructuredJudge = async ({ question, response, criteria }) => {
+  const questions: Record<string, NoulQuestion> = {};
+  criteria.forEach((criterion, i) => {
+    questions[`c${i}`] = noul("Does the response satisfy this criterion?", {
+      true: criterion,
+    });
+  });
+
+  const { answers } = await jev.systemOne({ state: { question, response }, questions });
+
+  return criteria.map((_, i) => {
+    const answer = answers[`c${i}`];
+    if (!answer) throw new Error(`Jev returned no answer for criterion ${i}`);
+    return { met: answer.noul >= 0.5, confidence: answer.noul }; // noul is P(yes), 0..1
+  });
+};
+
+const config: RunnerConfig = {
+  ...fileConfig,
+  testCases: fileConfig.testCases!,
+  agent: async (question) => (await myAgent.generate(question)).text,
+  structuredJudge: jevJudge,
+};
+```
+
+Two things to watch: the SDK retries internally, so leave `retryConfig` unset (or set `maxRetries: 1`) to avoid stacking retries on top of `withRetry`; and Jev returns no reasoning prose, so `reasoning` in the report becomes a confidence figure.
+
 ## Configuration Reference
 
 All fields are optional. Defaults are applied by the library when not specified. Paths are resolved relative to the config file's directory.
@@ -210,12 +301,12 @@ All fields are optional. Defaults are applied by the library when not specified.
 | `scoringWeights.length` | `number` | `0.1` | Weight for response length check |
 | `passThreshold` | `number` | `0.7` | Minimum score to pass |
 | `regressionThreshold` | `number` | `0.2` | Score decrease that constitutes a regression |
-| `evaluationPromptTemplate` | `string` | Japanese template | Prompt with `{{question}}`, `{{response}}`, `{{criterion}}` placeholders |
+| `evaluationPromptTemplate` | `string` | Japanese template | Prompt with `{{question}}`, `{{response}}`, `{{criterion}}` placeholders (`evaluationLLM` only) |
 | `retryConfig.maxRetries` | `number` | `3` | Max retry attempts for LLM calls |
 | `retryConfig.initialDelay` | `number` | `2000` | Initial delay in ms before first retry |
 | `retryConfig.backoffMultiplier` | `number` | `2` | Multiplier for exponential backoff |
 | `retryConfig.retryOnStatusCodes` | `number[]` | `[429]` | HTTP status codes that trigger a retry |
-| `interCallDelay` | `number` | `500` | Delay in ms between criterion evaluations |
+| `interCallDelay` | `number` | `500` | Delay in ms between criterion evaluations (`evaluationLLM` only) |
 | `saveResults` | `boolean` | — | Whether to save results and reports to disk |
 | `outputDir` | `string` | — | Directory for result and report files |
 | `testCasesPath` | `string` | — | Path to test cases JSON file (auto-loaded by `loadConfig`) |

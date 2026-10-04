@@ -8,6 +8,41 @@ export type AgentFunction = (question: string) => Promise<string>;
  */
 export type EvaluationLLM = (prompt: string) => Promise<string>;
 
+/**
+ * The verdict for a single criterion, as returned by a StructuredJudge.
+ */
+export interface CriterionVerdict {
+  met: boolean;
+  /** Human-readable justification. Defaults to a confidence summary when omitted. */
+  reasoning?: string;
+  /** Calibrated probability that the criterion is met, from zero to one. */
+  confidence?: number;
+}
+
+/**
+ * A judge that evaluates every criterion for one response in a single call.
+ *
+ * Returns one verdict per criterion, in the same order as `criteria`. Use this
+ * instead of EvaluationLLM when the judge speaks in structured values rather
+ * than text, or when it can answer all criteria in one request.
+ */
+export type StructuredJudge = (input: {
+  question: string;
+  response: string;
+  criteria: string[];
+}) => Promise<CriterionVerdict[]>;
+
+/**
+ * The evaluation outcome for a single criterion.
+ */
+export interface CriterionResult {
+  criterion: string;
+  met: boolean;
+  reasoning: string;
+  /** Calibrated probability that the criterion is met. Only set by a StructuredJudge. */
+  confidence?: number;
+}
+
 export interface TestCase {
   id: string;
   category: string;
@@ -23,11 +58,7 @@ export interface EvaluationResult {
   response: string;
   passed: boolean;
   score: number;
-  criteriaResults: {
-    criterion: string;
-    met: boolean;
-    reasoning: string;
-  }[];
+  criteriaResults: CriterionResult[];
   keywordMatches: {
     keyword: string;
     found: boolean;
@@ -60,7 +91,18 @@ export interface RetryConfig {
 }
 
 export interface EvaluationConfig {
-  evaluationLLM: EvaluationLLM;
+  /**
+   * Text-based judge, called once per criterion with a rendered prompt. Its reply
+   * must contain `MET: YES|NO` and `REASONING:`.
+   * Required unless `structuredJudge` is set.
+   */
+  evaluationLLM?: EvaluationLLM;
+  /**
+   * Structured judge, called once per response with all of its criteria.
+   * Takes precedence over `evaluationLLM` when both are set, and makes
+   * `evaluationPromptTemplate` and `interCallDelay` inapplicable.
+   */
+  structuredJudge?: StructuredJudge;
   scoringWeights?: ScoringWeights;
   passThreshold?: number;
   regressionThreshold?: number;
