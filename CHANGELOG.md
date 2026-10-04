@@ -1,5 +1,11 @@
 # agent-regression-testing
 
+## 0.1.17
+
+### Patch Changes
+
+- [#76](https://github.com/indigolain/agent-regression-testing/pull/76) [`82dd725`](https://github.com/indigolain/agent-regression-testing/commit/82dd725fc5b2d791f4a12e04b3a11a05cc132693) Thanks [@indigolain](https://github.com/indigolain)! - Patch dev-dependency security advisories: pin `vite` to `^7.3.6` as a direct devDependency (previously an auto-installed peer of `vitest`), which also resolves `esbuild` to 0.28.2. Removes the `pnpm.overrides` block, which was no longer having any effect.
+
 ## 0.1.16
 
 ### Patch Changes
