@@ -1,5 +1,11 @@
 # agent-regression-testing
 
+## 0.2.1
+
+### Patch Changes
+
+- [#81](https://github.com/indigolain/agent-regression-testing/pull/81) [`83da23f`](https://github.com/indigolain/agent-regression-testing/commit/83da23f4dec06c52dd4386f5283a40a7e5a799bf) Thanks [@dependabot](https://github.com/apps/dependabot)! - Bump vite from 7.3.6 to 8.3.2
+
 ## 0.2.0
 
 ### Minor Changes
