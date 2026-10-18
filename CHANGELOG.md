@@ -1,5 +1,15 @@
 # agent-regression-testing
 
+## 0.2.2
+
+### Patch Changes
+
+- [#80](https://github.com/indigolain/agent-regression-testing/pull/80) [`6d5f966`](https://github.com/indigolain/agent-regression-testing/commit/6d5f966e7a93d53c837c7265d6e306ae016ef6dc) Thanks [@dependabot](https://github.com/apps/dependabot)! - Bump @types/node from 26.6.3 to 26.6.4
+
+- [#84](https://github.com/indigolain/agent-regression-testing/pull/84) [`8aa6da9`](https://github.com/indigolain/agent-regression-testing/commit/8aa6da94d1c9ccd8362937597f9ce700e330c677) Thanks [@dependabot](https://github.com/apps/dependabot)! - Bump @types/node from 26.6.4 to 26.6.5
+
+- [#85](https://github.com/indigolain/agent-regression-testing/pull/85) [`e7b7ebd`](https://github.com/indigolain/agent-regression-testing/commit/e7b7ebd0bcd805b4188407bb4737fbec0cef062e) Thanks [@dependabot](https://github.com/apps/dependabot)! - Bump vite from 8.3.2 to 8.3.4
+
 ## 0.2.1
 
 ### Patch Changes
