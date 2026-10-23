@@ -1,5 +1,11 @@
 # agent-regression-testing
 
+## 0.2.3
+
+### Patch Changes
+
+- [#86](https://github.com/indigolain/agent-regression-testing/pull/86) [`423c1ec`](https://github.com/indigolain/agent-regression-testing/commit/423c1ecb88a2c4f6e046a1c959140546fd08fd85) Thanks [@dependabot](https://github.com/apps/dependabot)! - Bump vitest from 5.0.3 to 5.0.5
+
 ## 0.2.2
 
 ### Patch Changes

@@ -1,5 +1,0 @@
----
-"agent-regression-testing": patch
----
-
-Bump vitest from 5.0.3 to 5.0.5
