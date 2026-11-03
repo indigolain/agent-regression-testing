@@ -1,5 +1,11 @@
 # agent-regression-testing
 
+## 0.2.5
+
+### Patch Changes
+
+- [#90](https://github.com/indigolain/agent-regression-testing/pull/90) [`9b4d3a4`](https://github.com/indigolain/agent-regression-testing/commit/9b4d3a42589ca52d09093eafa128da4bafd49f0f) Thanks [@dependabot](https://github.com/apps/dependabot)! - Bump @types/node from 26.6.5 to 26.6.6
+
 ## 0.2.4
 
 ### Patch Changes
