@@ -3,6 +3,12 @@ name: Dependabot Changeset
 # Dependabot PRs don't carry a changeset, so dependency bumps never reach the
 # changelog or trigger a release. This workflow writes one into the PR branch.
 #
+# Only runtime dependencies affect what users install, so only they get a
+# `patch` bump. When every updated dependency is a direct dev dependency, an
+# empty changeset is written instead: it satisfies the changeset check without
+# triggering a release. Indirect (transitive) updates still get `patch`, since
+# the metadata can't tell whether they come through a runtime dependency.
+#
 # `pull_request_target` is required because the default `pull_request` token for
 # Dependabot is read-only and cannot push. No code from the PR is executed here:
 # the branch is checked out only so a file can be written and committed (no
@@ -60,16 +66,36 @@ jobs:
             }
           ')
 
+          # Empty changeset only if metadata exists and every dep is a direct
+          # dev dependency; anything else (incl. missing metadata) gets patch.
+          DEV_ONLY=$(node --input-type=module -e '
+            const deps = JSON.parse(process.env.UPDATED_DEPENDENCIES || "[]");
+            const devOnly =
+              deps.length > 0 &&
+              deps.every((d) => d.dependencyType === "direct:development");
+            process.stdout.write(String(devOnly));
+          ')
+
           CHANGESET=".changeset/dependabot-pr-${PR_NUMBER}.md"
           PACKAGE=$(jq -r .name package.json)
 
-          cat > "$CHANGESET" <<EOF
+          if [ "$DEV_ONLY" = "true" ]; then
+            # Empty changeset: no version bump, no release
+            cat > "$CHANGESET" <<EOF
+          ---
+          ---
+
+          $SUMMARY
+          EOF
+          else
+            cat > "$CHANGESET" <<EOF
           ---
           "$PACKAGE": patch
           ---
 
           $SUMMARY
           EOF
+          fi
 
           echo "Wrote $CHANGESET:"
           cat "$CHANGESET"
