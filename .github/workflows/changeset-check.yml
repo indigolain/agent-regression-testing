@@ -37,6 +37,26 @@ jobs:
             exit 0
           fi
 
+          # Skip check for dev-only dependency changes: only the lockfile and/or
+          # devDependencies in package.json changed. Neither reaches users (the
+          # lockfile isn't published), so there's nothing to release.
+          OTHER_FILES=$(echo "$NON_GITHUB_FILES" | grep -vxE 'pnpm-lock\.yaml|package\.json' || true)
+          if [ -z "$OTHER_FILES" ]; then
+            DEV_ONLY=true
+            if echo "$NON_GITHUB_FILES" | grep -qx 'package.json'; then
+              BASE=$(git merge-base origin/main HEAD)
+              DEV_ONLY=$(BASE_PKG="$(git show "$BASE:package.json")" node -e '
+                const strip = (s) => { const p = JSON.parse(s); delete p.devDependencies; return JSON.stringify(p); };
+                const head = require("fs").readFileSync("package.json", "utf8");
+                process.stdout.write(String(strip(process.env.BASE_PKG) === strip(head)));
+              ')
+            fi
+            if [ "$DEV_ONLY" = "true" ]; then
+              echo "Only the lockfile and/or devDependencies changed — skipping changeset check."
+              exit 0
+            fi
+          fi
+
           # Check if any changeset files were added
           CHANGESETS=$(echo "$CHANGED_FILES" | grep '^\.changeset/.*\.md$' | grep -v 'README.md' || true)
 
