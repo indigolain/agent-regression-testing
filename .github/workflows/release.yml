@@ -38,11 +38,13 @@ jobs:
 
       - name: Create release PR or publish
         id: changesets
-        uses: changesets/action@v1
+        # v2 is the release line for Changesets CLI v3: v1 doesn't recognise
+        # v3's publish output, so it published to npm but never pushed the
+        # git tag or created the GitHub release.
+        uses: changesets/action@v2
         with:
-          publish: pnpm changeset publish
-          version: pnpm version-packages
-          title: "chore: version packages"
-          commit: "chore: version packages"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          publish-script: pnpm changeset publish
+          version-script: pnpm version-packages
+          pr-title: "chore: version packages"
+          commit-message: "chore: version packages"
