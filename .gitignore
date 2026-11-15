@@ -8,3 +8,7 @@ dist
 .claude/statsig/
 .claude/todos/
 CLAUDE.local.md
+
+# VitePress
+docs/.vitepress/cache
+docs/.vitepress/dist
