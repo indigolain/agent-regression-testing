@@ -4,6 +4,31 @@ A standalone library for AI agent regression testing using an LLM-as-judge appro
 
 **📖 Documentation: https://indigolain.github.io/agent-regression-testing/**
 
+<p align="center">
+  <img src="docs/public/media/demo.gif" width="800" alt="Demo: running three test cases in a terminal. The LLM judge passes all of them, but refund-flow fails and is flagged as a regression; the report shows the agent refunded order 456 instead of 123">
+</p>
+
+## How it works
+
+Each test case sends a question to your agent, then checks the result three ways: an LLM judge for *what it said*, simple keyword and length checks, and deterministic assertions for *what it did*. Results are compared with a saved baseline, so a drop fails CI.
+
+```mermaid
+flowchart LR
+    TC["Test case<br/>question, criteria,<br/>keywords, assertions"] --> A["Your agent"]
+    A --> R["AgentRun<br/>text + toolCalls"]
+    R --> J["LLM judge<br/>expectedCriteria"]
+    R --> K["Keyword &amp;<br/>length checks"]
+    R --> D["Deterministic assertions<br/>tools, skills, regex,<br/>database checks"]
+    J --> S{"Score &ge; threshold<br/>and required<br/>assertions pass?"}
+    K --> S
+    D --> S
+    S -->|yes| P["PASS"]
+    S -->|no| F["FAIL"]
+    P --> B["Compare with baseline"]
+    F --> B
+    B --> O["Markdown report<br/>+ exit code for CI"]
+```
+
 ## Features
 
 - **LLM-as-judge evaluation** — uses an injected LLM to evaluate agent responses against criteria
@@ -65,6 +90,14 @@ const { report, exitCode } = await runTests(config);
 console.log(report);
 process.exit(exitCode);
 ```
+
+## What you get
+
+A Markdown report for every run. In this excerpt the judge is satisfied with the answer, but the assertions catch that the agent refunded the wrong order and never updated the database:
+
+<p align="center">
+  <img src="docs/public/media/report-failure.png" width="800" alt="Report excerpt: the judge marks both criteria as met, but the toolCalled issue_refund assertion fails because the call had orderId 456, the database check shows order 123 still shipped, and both are listed as assertions now failing against the baseline">
+</p>
 
 ## Learn more
 

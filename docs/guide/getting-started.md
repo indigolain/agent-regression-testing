@@ -1,5 +1,26 @@
 # Getting Started
 
+## How it works
+
+```mermaid
+flowchart LR
+    TC["Test case<br/>question, criteria,<br/>keywords, assertions"] --> A["Your agent"]
+    A --> R["AgentRun<br/>text + toolCalls"]
+    R --> J["LLM judge<br/>expectedCriteria"]
+    R --> K["Keyword &amp;<br/>length checks"]
+    R --> D["Deterministic assertions<br/>tools, skills, regex,<br/>database checks"]
+    J --> S{"Score &ge; threshold<br/>and required<br/>assertions pass?"}
+    K --> S
+    D --> S
+    S -->|yes| P["PASS"]
+    S -->|no| F["FAIL"]
+    P --> B["Compare with baseline"]
+    F --> B
+    B --> O["Markdown report<br/>+ exit code for CI"]
+```
+
+You provide the agent and the judge as plain functions. The library handles the rest: running each test case, scoring it, and comparing it with the baseline. See [Test Cases & Scoring](/guide/test-cases-and-scoring) for how each step decides.
+
 ## Installation
 
 ```bash
@@ -122,3 +143,17 @@ const { report, exitCode } = await runTests(config);
 console.log(report);
 process.exit(exitCode);
 ```
+
+## 5. Run it
+
+Save the runner from step 4 as `agent-regression/run.ts` and run it with a TypeScript runner such as [tsx](https://tsx.is), or write it in plain JavaScript and use `node`:
+
+```bash
+npx tsx agent-regression/run.ts
+```
+
+Each test case is logged as it runs, followed by the baseline comparison:
+
+![Terminal output of a run: greeting and order-status pass, refund-flow fails, and one regression is detected against the baseline](/media/terminal-run.png)
+
+The exit code is `1` when any test case fails or regresses, so the script can gate CI directly. The Markdown report saved next to the results explains every verdict. See [Run output](/guide/test-cases-and-scoring#run-output).

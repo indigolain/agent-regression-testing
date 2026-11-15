@@ -584,3 +584,39 @@ describe("compareWithBaseline with assertions", () => {
     expect(report).toContain("assertion now failing: regex /ok/");
   });
 });
+
+describe("generateReport formatting", () => {
+  it("checks the response length against the test case's minimum", () => {
+    const report = generateReport([
+      makeResult({ testId: "short-ok", responseLength: 36, minResponseLength: 20 }),
+      makeResult({ testId: "too-short", responseLength: 36, minResponseLength: 50 }),
+    ]);
+
+    expect(report).toContain("**Response Length:** 36 chars (min: 20, met)");
+    expect(report).toContain("**Response Length:** 36 chars (min: 50, not met)");
+  });
+
+  it("omits the length verdict for results saved without a minimum", () => {
+    const report = generateReport([makeResult({ responseLength: 90 })]);
+
+    expect(report).toContain("**Response Length:** 90 chars\n");
+  });
+
+  it("does not print -0.0% for a floating-point delta", () => {
+    const comparisons: ComparisonResult[] = [
+      {
+        testId: "t",
+        baselineScore: 1,
+        currentScore: 0.9999999999999999,
+        delta: -1.1102230246251565e-16,
+        regression: true,
+        improvement: false,
+        assertionRegressions: ["regex /ok/"],
+      },
+    ];
+
+    const report = generateReport([makeResult({ testId: "t" })], comparisons);
+
+    expect(report).toContain("- t: 100.0% -> 100.0% (0.0%)");
+  });
+});
