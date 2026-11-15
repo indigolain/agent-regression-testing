@@ -12,22 +12,7 @@ A standalone library for AI agent regression testing using an LLM-as-judge appro
 
 Each test case sends a question to your agent, then checks the result three ways: an LLM judge for *what it said*, simple keyword and length checks, and deterministic assertions for *what it did*. Results are compared with a saved baseline, so a drop fails CI.
 
-```mermaid
-flowchart LR
-    TC["Test case<br/>question, criteria,<br/>keywords, assertions"] --> A["Your agent"]
-    A --> R["AgentRun<br/>text + toolCalls"]
-    R --> J["LLM judge<br/>expectedCriteria"]
-    R --> K["Keyword &amp;<br/>length checks"]
-    R --> D["Deterministic assertions<br/>tools, skills, regex,<br/>database checks"]
-    J --> S{"Score &ge; threshold<br/>and required<br/>assertions pass?"}
-    K --> S
-    D --> S
-    S -->|yes| P["PASS"]
-    S -->|no| F["FAIL"]
-    P --> B["Compare with baseline"]
-    F --> B
-    B --> O["Markdown report<br/>+ exit code for CI"]
-```
+See the [flow diagram in the docs](https://indigolain.github.io/agent-regression-testing/guide/getting-started#how-it-works) for how each step decides.
 
 ## Features
 
