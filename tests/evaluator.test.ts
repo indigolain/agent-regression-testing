@@ -580,7 +580,7 @@ describe("compareWithBaseline with assertions", () => {
     const report = generateReport([current], comparisons);
 
     expect(report).toContain("**Assertions:**");
-    expect(report).toContain("- - regex /ok/ (optional)");
+    expect(report).toContain("- ❌ regex /ok/ (optional)");
     expect(report).toContain("assertion now failing: regex /ok/");
   });
 });
@@ -618,5 +618,38 @@ describe("generateReport formatting", () => {
     const report = generateReport([makeResult({ testId: "t" })], comparisons);
 
     expect(report).toContain("- t: 100.0% -> 100.0% (0.0%)");
+  });
+});
+
+describe("generateReport markers", () => {
+  it("marks criteria, assertions and keywords with emoji that survive Markdown rendering", () => {
+    const report = generateReport([
+      makeResult({
+        criteriaResults: [
+          { criterion: "Is polite", met: true, reasoning: "yes" },
+          { criterion: "Cites a source", met: false, reasoning: "no" },
+        ],
+        assertionResults: [
+          {
+            assertion: { type: "toolCalled", name: "search" },
+            label: "toolCalled search",
+            passed: false,
+            required: true,
+            message: "Not called",
+          },
+        ],
+        keywordMatches: [
+          { keyword: "useState", found: true },
+          { keyword: "useEffect", found: false },
+        ],
+      }),
+    ]);
+
+    expect(report).toContain("- ✅ Is polite\n");
+    expect(report).toContain("- ❌ Cites a source\n");
+    expect(report).toContain("- ❌ toolCalled search\n");
+    expect(report).toContain("**Keywords:** ✅ useState, ❌ useEffect");
+    // No "- +" / "- -" lines, which Markdown renders as nested bullets without the marker.
+    expect(report).not.toMatch(/^- [+-] /m);
   });
 });

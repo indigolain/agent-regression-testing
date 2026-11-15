@@ -354,21 +354,21 @@ ${result.response || "(No response generated)"}
 **Criteria Results:**
 `;
     for (const cr of result.criteriaResults) {
-      const criterionStatus = cr.met ? "+" : "-";
+      const criterionStatus = mark(cr.met);
       report += `- ${criterionStatus} ${cr.criterion}\n  _${cr.reasoning}_\n`;
     }
 
     if (result.assertionResults && result.assertionResults.length > 0) {
       report += `\n**Assertions:**\n`;
       for (const ar of result.assertionResults) {
-        const assertionStatus = ar.passed ? "+" : "-";
+        const assertionStatus = mark(ar.passed);
         const optional = ar.required ? "" : " (optional)";
         report += `- ${assertionStatus} ${ar.label}${optional}\n  _${ar.message}_\n`;
       }
     }
 
     report += `\n**Keywords:** ${result.keywordMatches
-      .map((k) => `${k.keyword}${k.found ? "+" : "-"}`)
+      .map((k) => `${mark(k.found)} ${k.keyword}`)
       .join(", ")}
 **Response Length:** ${result.responseLength} chars${formatLengthCheck(result)}
 ---
@@ -429,4 +429,12 @@ function formatLengthCheck(result: EvaluationResult): string {
   if (result.minResponseLength === undefined) return "";
   const met = result.responseLength >= result.minResponseLength;
   return ` (min: ${result.minResponseLength}, ${met ? "met" : "not met"})`;
+}
+
+/**
+ * Pass/fail marker for report lines. Emoji rather than "+"/"-", which
+ * Markdown would read as list bullets and drop when the report is rendered.
+ */
+function mark(passed: boolean): string {
+  return passed ? "✅" : "❌";
 }
