@@ -97,6 +97,7 @@ export async function evaluateResponse(
     criteriaResults,
     keywordMatches,
     responseLength,
+    minResponseLength: testCase.minResponseLength,
     ...(assertionResults ? { assertionResults } : {}),
     ...(run.toolCalls ? { toolCalls: run.toolCalls } : {}),
     evaluationTime,
@@ -369,9 +370,7 @@ ${result.response || "(No response generated)"}
     report += `\n**Keywords:** ${result.keywordMatches
       .map((k) => `${k.keyword}${k.found ? "+" : "-"}`)
       .join(", ")}
-**Response Length:** ${result.responseLength} chars (min: ${
-      result.responseLength >= 100 ? "met" : "not met"
-    })
+**Response Length:** ${result.responseLength} chars${formatLengthCheck(result)}
 ---
 `;
   }
@@ -391,11 +390,9 @@ ${result.response || "(No response generated)"}
     if (regressions.length > 0) {
       report += `### Regressions Detected:\n`;
       for (const reg of regressions) {
-        report += `- ${reg.testId}: ${(reg.baselineScore * 100).toFixed(
-          1,
-        )}% -> ${(reg.currentScore * 100).toFixed(1)}% (${(
-          reg.delta * 100
-        ).toFixed(1)}%)\n`;
+        report += `- ${reg.testId}: ${formatPercent(reg.baselineScore)}% -> ${formatPercent(
+          reg.currentScore,
+        )}% (${formatPercent(reg.delta)}%)\n`;
         for (const label of reg.assertionRegressions ?? []) {
           report += `  - assertion now failing: ${label}\n`;
         }
@@ -405,14 +402,31 @@ ${result.response || "(No response generated)"}
     if (improvements.length > 0) {
       report += `\n### Improvements:\n`;
       for (const imp of improvements) {
-        report += `- ${imp.testId}: ${(imp.baselineScore * 100).toFixed(
-          1,
-        )}% -> ${(imp.currentScore * 100).toFixed(1)}% (+${(
-          imp.delta * 100
-        ).toFixed(1)}%)\n`;
+        report += `- ${imp.testId}: ${formatPercent(imp.baselineScore)}% -> ${formatPercent(
+          imp.currentScore,
+        )}% (+${formatPercent(imp.delta)}%)\n`;
       }
     }
   }
 
   return report;
+}
+
+/**
+ * Formats a 0..1 ratio as a percentage with one decimal, without printing
+ * "-0.0" for tiny negative floating-point deltas.
+ */
+function formatPercent(ratio: number): string {
+  const formatted = (ratio * 100).toFixed(1);
+  return formatted === "-0.0" ? "0.0" : formatted;
+}
+
+/**
+ * The report's length verdict. Results saved before minResponseLength was
+ * recorded show only the length.
+ */
+function formatLengthCheck(result: EvaluationResult): string {
+  if (result.minResponseLength === undefined) return "";
+  const met = result.responseLength >= result.minResponseLength;
+  return ` (min: ${result.minResponseLength}, ${met ? "met" : "not met"})`;
 }

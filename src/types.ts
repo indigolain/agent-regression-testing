@@ -217,6 +217,8 @@ export interface EvaluationResult {
     found: boolean;
   }[];
   responseLength: number;
+  /** The test case's minimum response length, recorded for the report. */
+  minResponseLength?: number;
   /** Results of the test case's deterministic assertions, if it has any. */
   assertionResults?: AssertionResult[];
   /** The agent's tool-call trace, if it reported one. */

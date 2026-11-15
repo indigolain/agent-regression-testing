@@ -141,6 +141,7 @@ function failedResult(
       found: false,
     })),
     responseLength: 0,
+    minResponseLength: testCase.minResponseLength,
     ...(testCase.assertions?.length
       ? {
           assertionResults: testCase.assertions.map((assertion) => ({
