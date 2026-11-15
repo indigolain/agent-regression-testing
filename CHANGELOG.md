@@ -1,5 +1,15 @@
 # agent-regression-testing
 
+## 0.4.0
+
+### Minor Changes
+
+- [#105](https://github.com/indigolain/agent-regression-testing/pull/105) [`74530f3`](https://github.com/indigolain/agent-regression-testing/commit/74530f30928b72e30dfb5ceee4f764e6cdc260fd) Thanks [@indigolain](https://github.com/indigolain)! - Add a static HTML dashboard for test results. `agent-regression-testing dashboard [dir]` (or `writeDashboard()`) reads every `results-*.json` saved in a directory and writes a self-contained `dashboard.html` showing: the latest pass rate and changes since the previous run, pass rate and average score over time, a test case × run matrix, the most-failing assertions, and a per-run drill-down with the response, verdicts and tool calls. Set `dashboard: true` in the config to regenerate it after every run. Also exports `loadRunHistory()`, `buildDashboardModel()` and `generateDashboard()`.
+
+### Patch Changes
+
+- [#103](https://github.com/indigolain/agent-regression-testing/pull/103) [`b2a6801`](https://github.com/indigolain/agent-regression-testing/commit/b2a680118594f279b41c822c37b3c485fdde82c9) Thanks [@indigolain](https://github.com/indigolain)! - Fix two report formatting bugs: the response length verdict compared against a hardcoded 100 characters instead of the test case's `minResponseLength`, and an unchanged score could show a `-0.0%` delta from floating-point rounding. Results now record `minResponseLength` so the report can show it.
+
 ## 0.3.1
 
 ### Patch Changes
