@@ -1,5 +1,15 @@
 # agent-regression-testing
 
+## 0.3.0
+
+### Minor Changes
+
+- [#98](https://github.com/indigolain/agent-regression-testing/pull/98) [`1fb96a2`](https://github.com/indigolain/agent-regression-testing/commit/1fb96a2901a9010cf30c96df9ce70a2a317898bf) Thanks [@indigolain](https://github.com/indigolain)! - Add deterministic assertions alongside LLM-as-judge evaluation. Test cases can now assert which tools the agent called (`toolCalled`, `toolNotCalled`, `toolOrder`), which skill it triggered (`skillTriggered`), regex matches on the response (`regex`), and custom named checks such as database state (`check`). Agents may return an `AgentRun` with a tool-call trace instead of a string, and `runTests` accepts `checks`, `beforeEach` and `afterEach`. Required assertions gate pass/fail; optional ones are scored via `scoringWeights.assertions`. Assertions that flip from pass to fail are reported as baseline regressions. `expectedCriteria`, `keywords` and `minResponseLength` are now optional in test case JSON, and a judge is only needed when some test case has criteria. Existing configs, test cases and baselines work unchanged.
+
+### Patch Changes
+
+- [#100](https://github.com/indigolain/agent-regression-testing/pull/100) [`f2a4af4`](https://github.com/indigolain/agent-regression-testing/commit/f2a4af404d2f55efdf5df85aced5c2ece08cab4e) Thanks [@indigolain](https://github.com/indigolain)! - Move the detailed documentation to a VitePress site at https://indigolain.github.io/agent-regression-testing/ and trim the README to an overview and quick start. Adds a new page on test case fields, scoring and baselines, and sets the package's `homepage`.
+
 ## 0.2.5
 
 ### Patch Changes
