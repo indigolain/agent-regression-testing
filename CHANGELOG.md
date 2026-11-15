@@ -1,5 +1,13 @@
 # agent-regression-testing
 
+## 0.4.2
+
+### Patch Changes
+
+- [#109](https://github.com/indigolain/agent-regression-testing/pull/109) [`6c68c6d`](https://github.com/indigolain/agent-regression-testing/commit/6c68c6d799988e62f1427aeb0bc0fbb409805ba1) Thanks [@indigolain](https://github.com/indigolain)! - Remove the Mermaid diagram from the README, which npm displayed as a raw code block. The README now links to the diagram on the documentation site.
+
+- [#108](https://github.com/indigolain/agent-regression-testing/pull/108) [`ed8de4e`](https://github.com/indigolain/agent-regression-testing/commit/ed8de4efd4eb56467d522988a997babd39a065a2) Thanks [@indigolain](https://github.com/indigolain)! - Mark passed and failed criteria, assertions and keywords in the Markdown report with ✅ and ❌ instead of `+` and `-`. Markdown read `- +` and `- -` as nested list bullets, so the markers disappeared when the report was rendered (e.g. on GitHub), hiding which checks passed.
+
 ## 0.4.1
 
 ### Patch Changes
