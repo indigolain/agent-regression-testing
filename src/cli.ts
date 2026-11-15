@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { writeDashboard } from "./dashboard.js";
 import { parseArgs } from "./args.js";
 import { init } from "./init.js";

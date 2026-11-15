@@ -31,3 +31,14 @@ jobs:
       - run: pnpm build
 
       - run: pnpm test
+
+      # Run the CLI the way users do: through the installed package's bin.
+      - name: Smoke-test the packed CLI
+        run: |
+          pnpm pack --pack-destination "$RUNNER_TEMP"
+          cd "$RUNNER_TEMP"
+          npm init -y > /dev/null
+          npm install ./agent-regression-testing-*.tgz
+          npx --no-install agent-regression-testing init ./smoke
+          npx --no-install agent-regression-testing dashboard ./smoke
+          test -f ./smoke/dashboard.html
