@@ -1,8 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { compareWithBaseline, evaluateResponse, generateReport } from "./evaluator.js";
+import {
+  compareWithBaseline,
+  evaluateResponse,
+  generateReport,
+  toAgentRun,
+} from "./evaluator.js";
+import { assertionLabel } from "./assertions.js";
 import { withRetry } from "./retry.js";
-import type { EvaluationResult, RunnerConfig } from "./types.js";
+import type { EvaluationResult, RunnerConfig, TestCase } from "./types.js";
 
 /**
  * Main test runner for agent regression testing.
@@ -26,43 +32,37 @@ export async function runTests(config: RunnerConfig): Promise<{
       `[${i + 1}/${testCases.length}] Testing: ${testCase.id} (${testCase.category})`,
     );
 
+    let result: EvaluationResult | undefined;
     try {
-      const responseText = await withRetry(
-        () => agent(testCase.question),
-        config.retryConfig,
-      );
-
-      const result = await evaluateResponse(testCase, responseText, config);
-      results.push(result);
-
-      const status = result.passed ? "PASS" : "FAIL";
-      console.log(
-        `  ${status} Score: ${(result.score * 100).toFixed(1)}% (${result.evaluationTime}ms)\n`,
-      );
+      await config.beforeEach?.(testCase);
     } catch (error) {
-      console.error(
-        `  ERROR: ${error instanceof Error ? error.message : "Unknown error"}\n`,
-      );
-      results.push({
-        testId: testCase.id,
-        question: testCase.question,
-        response: "",
-        passed: false,
-        score: 0,
-        criteriaResults: testCase.expectedCriteria.map((criterion) => ({
-          criterion,
-          met: false,
-          reasoning: "Test execution failed",
-        })),
-        keywordMatches: testCase.keywords.map((keyword) => ({
-          keyword,
-          found: false,
-        })),
-        responseLength: 0,
-        evaluationTime: 0,
-        timestamp: new Date().toISOString(),
-      });
+      result = failedResult(testCase, error, "beforeEach");
     }
+
+    if (!result) {
+      try {
+        const output = await withRetry(
+          () => agent(testCase.question, { testCase }),
+          config.retryConfig,
+        );
+        result = await evaluateResponse(testCase, toAgentRun(output), config);
+        const status = result.passed ? "PASS" : "FAIL";
+        console.log(
+          `  ${status} Score: ${(result.score * 100).toFixed(1)}% (${result.evaluationTime}ms)\n`,
+        );
+      } catch (error) {
+        result = failedResult(testCase, error);
+      }
+    }
+
+    if (config.afterEach) {
+      try {
+        await config.afterEach(testCase, result);
+      } catch (error) {
+        result = failedResult(testCase, error, "afterEach");
+      }
+    }
+    results.push(result);
   }
 
   // Compare with baseline if provided
@@ -111,5 +111,48 @@ export async function runTests(config: RunnerConfig): Promise<{
     results,
     report,
     exitCode,
+  };
+}
+
+/**
+ * The result recorded for a test case whose run, evaluation, or hooks threw.
+ */
+function failedResult(
+  testCase: TestCase,
+  error: unknown,
+  stage?: string,
+): EvaluationResult {
+  const message = error instanceof Error ? error.message : "Unknown error";
+  const reason = stage ? `${stage} failed: ${message}` : "Test execution failed";
+  console.error(`  ERROR${stage ? ` in ${stage}` : ""}: ${message}\n`);
+  return {
+    testId: testCase.id,
+    question: testCase.question,
+    response: "",
+    passed: false,
+    score: 0,
+    criteriaResults: testCase.expectedCriteria.map((criterion) => ({
+      criterion,
+      met: false,
+      reasoning: reason,
+    })),
+    keywordMatches: testCase.keywords.map((keyword) => ({
+      keyword,
+      found: false,
+    })),
+    responseLength: 0,
+    ...(testCase.assertions?.length
+      ? {
+          assertionResults: testCase.assertions.map((assertion) => ({
+            assertion,
+            label: assertionLabel(assertion),
+            passed: false,
+            required: assertion.required !== false,
+            message: reason,
+          })),
+        }
+      : {}),
+    evaluationTime: 0,
+    timestamp: new Date().toISOString(),
   };
 }

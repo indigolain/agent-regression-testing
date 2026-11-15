@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { loadConfig, parseConfig } from "../src/config.js";
+import { loadConfig, normalizeTestCases, parseConfig } from "../src/config.js";
 
 describe("parseConfig", () => {
   it("parses a full config", () => {
@@ -251,5 +251,72 @@ describe("loadConfig", () => {
     const config = await loadConfig(path.join(subDir, "config.yml"));
 
     expect(config.testCases).toEqual(testCases);
+  });
+});
+
+describe("assertion-related config", () => {
+  it("parses scoringWeights.assertions and skillDetection", () => {
+    const config = parseConfig(`
+scoringWeights:
+  criteria: 0.5
+  keywords: 0.2
+  length: 0.1
+  assertions: 0.2
+skillDetection:
+  toolName: load_skill
+  argKey: id
+`);
+
+    expect(config.scoringWeights?.assertions).toBe(0.2);
+    expect(config.skillDetection).toEqual({ toolName: "load_skill", argKey: "id" });
+  });
+
+  it("rejects invalid skillDetection", () => {
+    expect(() => parseConfig("skillDetection:\n  toolName: x\n")).toThrow("skillDetection");
+  });
+
+  it("rejects a non-numeric assertions weight", () => {
+    expect(() =>
+      parseConfig("scoringWeights:\n  criteria: 1\n  keywords: 0\n  length: 0\n  assertions: high\n"),
+    ).toThrow("scoringWeights.assertions");
+  });
+});
+
+describe("normalizeTestCases", () => {
+  it("fills defaults for optional fields", () => {
+    const [tc] = normalizeTestCases([
+      { id: "a", question: "q", assertions: [{ type: "toolCalled", name: "search" }] },
+    ]);
+
+    expect(tc).toEqual({
+      id: "a",
+      question: "q",
+      category: "general",
+      expectedCriteria: [],
+      keywords: [],
+      minResponseLength: 0,
+      assertions: [{ type: "toolCalled", name: "search" }],
+    });
+  });
+
+  it("keeps fully specified test cases as they are", () => {
+    const full = {
+      id: "a",
+      category: "c",
+      question: "q",
+      expectedCriteria: ["x"],
+      keywords: ["k"],
+      minResponseLength: 10,
+    };
+    expect(normalizeTestCases([full])).toEqual([full]);
+  });
+
+  it("rejects invalid test cases and assertions", () => {
+    expect(() => normalizeTestCases({})).toThrow("JSON array");
+    expect(() => normalizeTestCases([{ question: "q" }])).toThrow("requires id");
+    expect(() => normalizeTestCases([{ id: "a", question: "q", keywords: "k" }])).toThrow("keywords");
+    expect(() =>
+      normalizeTestCases([{ id: "a", question: "q", assertions: [{ type: "bogus" }] }]),
+    ).toThrow('Test case "a", assertion 0');
   });
 });

@@ -448,3 +448,139 @@ describe("generateReport", () => {
     expect(report).not.toContain("Comparison with Baseline");
   });
 });
+
+describe("evaluateResponse with assertions", () => {
+  const traced = {
+    text: "Refund issued for order 123.",
+    toolCalls: [{ name: "issue_refund", args: { orderId: "123" } }],
+  };
+
+  it("accepts an AgentRun and records assertion results and the trace", async () => {
+    const testCase = makeTestCase({
+      expectedCriteria: [],
+      keywords: [],
+      minResponseLength: 0,
+      assertions: [{ type: "toolCalled", name: "issue_refund", args: { orderId: "123" } }],
+    });
+    const config = makeConfig("unused");
+
+    const result = await evaluateResponse(testCase, traced, config);
+
+    expect(result.response).toBe(traced.text);
+    expect(result.toolCalls).toEqual(traced.toolCalls);
+    expect(result.assertionResults).toHaveLength(1);
+    expect(result.assertionResults?.[0].passed).toBe(true);
+    expect(result.passed).toBe(true);
+    expect(result.score).toBeCloseTo(1);
+  });
+
+  it("fails the test when a required assertion fails, whatever the score", async () => {
+    const testCase = makeTestCase({
+      assertions: [{ type: "toolNotCalled", name: "issue_refund" }],
+    });
+    const config = makeConfig("MET: YES\nREASONING: ok");
+    const result = await evaluateResponse(
+      testCase,
+      { ...traced, text: "useState onChange useState onChange" },
+      config,
+    );
+
+    expect(result.score).toBeCloseTo(1);
+    expect(result.passed).toBe(false);
+  });
+
+  it("scores optional assertions with the assertions weight, normalized", async () => {
+    const testCase = makeTestCase({
+      expectedCriteria: [],
+      keywords: [],
+      minResponseLength: 0,
+      assertions: [
+        { type: "toolCalled", name: "issue_refund", required: false },
+        { type: "toolCalled", name: "notify", required: false },
+      ],
+    });
+    const config = makeConfig("unused", {
+      scoringWeights: { criteria: 0.6, keywords: 0.3, length: 0.1, assertions: 1 },
+    });
+
+    const result = await evaluateResponse(testCase, traced, config);
+
+    // (1.0 base + 0.5 * 1) / 2
+    expect(result.score).toBeCloseTo(0.75);
+    expect(result.passed).toBe(true);
+  });
+
+  it("does not call the judge when there are no criteria", async () => {
+    const testCase = makeTestCase({ expectedCriteria: [] });
+    const config = makeConfig("MET: YES");
+
+    const result = await evaluateResponse(testCase, "useState onChange", config);
+
+    expect(config.evaluationLLM).not.toHaveBeenCalled();
+    expect(result.criteriaResults).toEqual([]);
+  });
+
+  it("needs no judge at all for a deterministic-only test case", async () => {
+    const testCase = makeTestCase({
+      expectedCriteria: [],
+      assertions: [{ type: "regex", pattern: "useState" }],
+    });
+
+    const result = await evaluateResponse(testCase, "useState onChange", {});
+
+    expect(result.passed).toBe(true);
+  });
+
+  it("leaves results unchanged for test cases without assertions", async () => {
+    const result = await evaluateResponse(
+      makeTestCase(),
+      "useState and onChange, a long enough answer",
+      makeConfig("MET: YES\nREASONING: ok"),
+    );
+
+    expect(result).not.toHaveProperty("assertionResults");
+    expect(result).not.toHaveProperty("toolCalls");
+  });
+});
+
+describe("compareWithBaseline with assertions", () => {
+  const assertion = { type: "regex" as const, pattern: "ok" };
+  const withAssertion = (passed: boolean, score = 0.9) =>
+    makeResult({
+      score,
+      assertionResults: [
+        { assertion, label: "regex /ok/", passed, required: false, message: "" },
+      ],
+    });
+
+  it("flags an assertion that passed in the baseline and fails now", () => {
+    const [comparison] = compareWithBaseline([withAssertion(false)], [withAssertion(true)]);
+
+    expect(comparison.regression).toBe(true);
+    expect(comparison.assertionRegressions).toEqual(["regex /ok/"]);
+  });
+
+  it("does not flag an assertion that was already failing", () => {
+    const [comparison] = compareWithBaseline([withAssertion(false)], [withAssertion(false)]);
+
+    expect(comparison.regression).toBe(false);
+    expect(comparison).not.toHaveProperty("assertionRegressions");
+  });
+
+  it("tolerates baselines recorded before assertions existed", () => {
+    const [comparison] = compareWithBaseline([withAssertion(false)], [makeResult()]);
+
+    expect(comparison.regression).toBe(false);
+  });
+
+  it("reports assertion results and assertion regressions", () => {
+    const current = withAssertion(false);
+    const comparisons = compareWithBaseline([current], [withAssertion(true)]);
+
+    const report = generateReport([current], comparisons);
+
+    expect(report).toContain("**Assertions:**");
+    expect(report).toContain("- - regex /ok/ (optional)");
+    expect(report).toContain("assertion now failing: regex /ok/");
+  });
+});
