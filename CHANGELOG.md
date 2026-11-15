@@ -1,5 +1,11 @@
 # agent-regression-testing
 
+## 0.4.1
+
+### Patch Changes
+
+- [#106](https://github.com/indigolain/agent-regression-testing/pull/106) [`44abad8`](https://github.com/indigolain/agent-regression-testing/commit/44abad8ca3369ea648c5cedfb8b1c3b3a039d679) Thanks [@indigolain](https://github.com/indigolain)! - Fix the `agent-regression-testing` command failing when run through npm's installed bin (e.g. `npx agent-regression-testing init`). The compiled CLI had no `#!/usr/bin/env node` line, so the shell tried to run the JavaScript itself.
+
 ## 0.4.0
 
 ### Minor Changes
