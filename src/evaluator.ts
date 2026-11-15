@@ -1,76 +1,118 @@
+import { evaluateAssertions } from "./assertions.js";
 import { DEFAULT_EVALUATION_PROMPT_JA, buildEvaluationPrompt } from "./prompts.js";
 import { withRetry } from "./retry.js";
 import type {
+  AgentRun,
   ComparisonResult,
   CriterionResult,
   EvaluationConfig,
   EvaluationResult,
+  ScoringWeights,
   TestCase,
 } from "./types.js";
 
-const DEFAULT_SCORING_WEIGHTS = {
+const DEFAULT_SCORING_WEIGHTS: ScoringWeights = {
   criteria: 0.6,
   keywords: 0.3,
   length: 0.1,
 };
 
+const DEFAULT_ASSERTIONS_WEIGHT = 0.3;
+
 /**
- * Evaluates if a response meets the expected criteria using LLM-as-judge
+ * Evaluates an agent's response against a test case: LLM-as-judge criteria,
+ * keyword matching, length, and deterministic assertions.
+ *
+ * `response` may be the plain text or an AgentRun carrying a tool-call trace.
  */
 export async function evaluateResponse(
   testCase: TestCase,
-  response: string,
+  response: string | AgentRun,
   config: EvaluationConfig,
 ): Promise<EvaluationResult> {
   const startTime = Date.now();
+  const run = toAgentRun(response);
+  const text = run.text;
   const weights = config.scoringWeights ?? DEFAULT_SCORING_WEIGHTS;
   const passThreshold = config.passThreshold ?? 0.7;
 
   // Basic checks
-  const responseLength = response.length;
+  const responseLength = text.length;
   const lengthCheck = responseLength >= testCase.minResponseLength;
 
   // Keyword matching
   const keywordMatches = testCase.keywords.map((keyword) => ({
     keyword,
-    found: response.includes(keyword),
+    found: text.includes(keyword),
   }));
 
-  // LLM-as-judge evaluation for criteria
-  const criteriaResults = await evaluateCriteria(
-    testCase.question,
-    response,
-    testCase.expectedCriteria,
-    config,
-  );
+  // Deterministic assertions
+  const assertionResults = testCase.assertions?.length
+    ? await evaluateAssertions(testCase.assertions, run, testCase, {
+        checks: config.checks,
+        skillDetection: config.skillDetection,
+      })
+    : undefined;
 
-  // Calculate overall score
-  const criteriaScore =
-    criteriaResults.filter((r) => r.met).length / criteriaResults.length;
-  const keywordScore =
-    keywordMatches.filter((k) => k.found).length / keywordMatches.length;
+  // LLM-as-judge evaluation for criteria
+  const criteriaResults =
+    testCase.expectedCriteria.length > 0
+      ? await evaluateCriteria(testCase.question, text, testCase.expectedCriteria, config)
+      : [];
+
+  // Calculate overall score. An empty criteria or keyword list is vacuously met.
+  const criteriaScore = fraction(criteriaResults.filter((r) => r.met).length, criteriaResults.length);
+  const keywordScore = fraction(keywordMatches.filter((k) => k.found).length, keywordMatches.length);
   const lengthScore = lengthCheck ? 1 : 0;
 
-  const totalScore =
+  let totalScore =
     criteriaScore * weights.criteria +
     keywordScore * weights.keywords +
     lengthScore * weights.length;
 
-  const passed = totalScore >= passThreshold;
+  // Non-required assertions add a weighted component; weights are then normalized.
+  const scoredAssertions = assertionResults?.filter((a) => !a.required) ?? [];
+  if (scoredAssertions.length > 0) {
+    const assertionsWeight = weights.assertions ?? DEFAULT_ASSERTIONS_WEIGHT;
+    const assertionScore = fraction(
+      scoredAssertions.filter((a) => a.passed).length,
+      scoredAssertions.length,
+    );
+    const totalWeight = weights.criteria + weights.keywords + weights.length + assertionsWeight;
+    totalScore =
+      totalWeight > 0 ? (totalScore + assertionScore * assertionsWeight) / totalWeight : 0;
+  }
+
+  const requiredAssertionsPassed =
+    assertionResults?.every((a) => !a.required || a.passed) ?? true;
+  const passed = totalScore >= passThreshold && requiredAssertionsPassed;
   const evaluationTime = Date.now() - startTime;
 
   return {
     testId: testCase.id,
     question: testCase.question,
-    response,
+    response: text,
     passed,
     score: totalScore,
     criteriaResults,
     keywordMatches,
     responseLength,
+    ...(assertionResults ? { assertionResults } : {}),
+    ...(run.toolCalls ? { toolCalls: run.toolCalls } : {}),
     evaluationTime,
     timestamp: new Date().toISOString(),
   };
+}
+
+/**
+ * Normalizes an agent's return value to an AgentRun.
+ */
+export function toAgentRun(response: string | AgentRun): AgentRun {
+  return typeof response === "string" ? { text: response } : response;
+}
+
+function fraction(numerator: number, denominator: number): number {
+  return denominator === 0 ? 1 : numerator / denominator;
 }
 
 /**
@@ -236,7 +278,8 @@ export function compareWithBaseline(
     }
 
     const delta = currentResult.score - baselineResult.score;
-    const regression = delta < -regressionThreshold;
+    const assertionRegressions = findAssertionRegressions(currentResult, baselineResult);
+    const regression = delta < -regressionThreshold || assertionRegressions.length > 0;
     const improvement = delta > regressionThreshold;
 
     comparisons.push({
@@ -246,10 +289,28 @@ export function compareWithBaseline(
       delta,
       regression,
       improvement,
+      ...(assertionRegressions.length > 0 ? { assertionRegressions } : {}),
     });
   }
 
   return comparisons;
+}
+
+/**
+ * Labels of assertions that passed in the baseline and fail now. Assertions are
+ * matched by label; ones missing from either side are ignored.
+ */
+function findAssertionRegressions(
+  current: EvaluationResult,
+  baseline: EvaluationResult,
+): string[] {
+  if (!current.assertionResults || !baseline.assertionResults) return [];
+  const passedBefore = new Set(
+    baseline.assertionResults.filter((a) => a.passed).map((a) => a.label),
+  );
+  return current.assertionResults
+    .filter((a) => !a.passed && passedBefore.has(a.label))
+    .map((a) => a.label);
 }
 
 /**
@@ -296,6 +357,15 @@ ${result.response || "(No response generated)"}
       report += `- ${criterionStatus} ${cr.criterion}\n  _${cr.reasoning}_\n`;
     }
 
+    if (result.assertionResults && result.assertionResults.length > 0) {
+      report += `\n**Assertions:**\n`;
+      for (const ar of result.assertionResults) {
+        const assertionStatus = ar.passed ? "+" : "-";
+        const optional = ar.required ? "" : " (optional)";
+        report += `- ${assertionStatus} ${ar.label}${optional}\n  _${ar.message}_\n`;
+      }
+    }
+
     report += `\n**Keywords:** ${result.keywordMatches
       .map((k) => `${k.keyword}${k.found ? "+" : "-"}`)
       .join(", ")}
@@ -326,6 +396,9 @@ ${result.response || "(No response generated)"}
         )}% -> ${(reg.currentScore * 100).toFixed(1)}% (${(
           reg.delta * 100
         ).toFixed(1)}%)\n`;
+        for (const label of reg.assertionRegressions ?? []) {
+          report += `  - assertion now failing: ${label}\n`;
+        }
       }
     }
 

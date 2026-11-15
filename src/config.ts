@@ -1,7 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { parse } from "yaml";
-import type { ConfigFile, EvaluationResult, LoadedConfig, TestCase } from "./types.js";
+import { validateAssertions } from "./assertions.js";
+import type {
+  ConfigFile,
+  EvaluationResult,
+  LoadedConfig,
+  TestCase,
+  TestCaseInput,
+} from "./types.js";
 
 /**
  * Loads configuration from a YAML file.
@@ -18,7 +25,7 @@ export async function loadConfig(filePath: string): Promise<LoadedConfig> {
   if (config.testCasesPath) {
     const resolved = path.resolve(configDir, config.testCasesPath);
     const data = await fs.readFile(resolved, "utf-8");
-    loaded.testCases = JSON.parse(data) as TestCase[];
+    loaded.testCases = normalizeTestCases(JSON.parse(data));
   }
 
   if (config.baselinePath) {
@@ -32,6 +39,55 @@ export async function loadConfig(filePath: string): Promise<LoadedConfig> {
   }
 
   return loaded;
+}
+
+/**
+ * Validates test cases parsed from JSON and fills in defaults for optional
+ * fields: `category` → "general", `expectedCriteria` and `keywords` → [],
+ * `minResponseLength` → 0.
+ */
+export function normalizeTestCases(raw: unknown): TestCase[] {
+  if (!Array.isArray(raw)) {
+    throw new Error("Test cases must be a JSON array");
+  }
+  return raw.map((item, i) => {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) {
+      throw new Error(`Test case ${i} must be an object`);
+    }
+    const tc = item as Partial<TestCaseInput> & Record<string, unknown>;
+    if (typeof tc.id !== "string") {
+      throw new Error(`Test case ${i} requires id: string`);
+    }
+    if (typeof tc.question !== "string") {
+      throw new Error(`Test case "${tc.id}" requires question: string`);
+    }
+    const stringArray = (key: "expectedCriteria" | "keywords"): string[] => {
+      const v = tc[key];
+      if (v === undefined) return [];
+      if (!Array.isArray(v) || v.some((x) => typeof x !== "string")) {
+        throw new Error(`Test case "${tc.id}": ${key} must be an array of strings`);
+      }
+      return v;
+    };
+    if (tc.minResponseLength !== undefined && typeof tc.minResponseLength !== "number") {
+      throw new Error(`Test case "${tc.id}": minResponseLength must be a number`);
+    }
+    if (tc.category !== undefined && typeof tc.category !== "string") {
+      throw new Error(`Test case "${tc.id}": category must be a string`);
+    }
+    return {
+      ...tc,
+      id: tc.id,
+      question: tc.question,
+      category: tc.category ?? "general",
+      expectedCriteria: stringArray("expectedCriteria"),
+      keywords: stringArray("keywords"),
+      minResponseLength: tc.minResponseLength ?? 0,
+      ...(tc.assertions === undefined
+        ? {}
+        : { assertions: validateAssertions(tc.assertions, tc.id) }),
+    };
+  });
 }
 
 /**
@@ -65,10 +121,14 @@ function validateConfig(raw: Record<string, unknown>): ConfigFile {
     ) {
       throw new Error("scoringWeights.criteria, .keywords, and .length must be numbers");
     }
+    if (weights.assertions !== undefined && typeof weights.assertions !== "number") {
+      throw new Error("scoringWeights.assertions must be a number");
+    }
     config.scoringWeights = {
       criteria: weights.criteria,
       keywords: weights.keywords,
       length: weights.length,
+      ...(weights.assertions === undefined ? {} : { assertions: weights.assertions }),
     };
   }
 
@@ -124,6 +184,18 @@ function validateConfig(raw: Record<string, unknown>): ConfigFile {
       throw new Error("interCallDelay must be a number");
     }
     config.interCallDelay = raw.interCallDelay;
+  }
+
+  if (raw.skillDetection !== undefined) {
+    const d = raw.skillDetection;
+    if (typeof d !== "object" || d === null || Array.isArray(d)) {
+      throw new Error("skillDetection must be a mapping with toolName and argKey");
+    }
+    const detection = d as Record<string, unknown>;
+    if (typeof detection.toolName !== "string" || typeof detection.argKey !== "string") {
+      throw new Error("skillDetection.toolName and .argKey must be strings");
+    }
+    config.skillDetection = { toolName: detection.toolName, argKey: detection.argKey };
   }
 
   if (raw.saveResults !== undefined) {

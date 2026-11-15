@@ -163,3 +163,101 @@ describe("runTests", () => {
     });
   });
 });
+
+describe("runTests with traced agents and hooks", () => {
+  const deterministicCase = makeTestCase({
+    expectedCriteria: [],
+    keywords: [],
+    minResponseLength: 0,
+    assertions: [{ type: "toolCalled", name: "search" }],
+  });
+
+  it("passes the test case to the agent and evaluates its trace", async () => {
+    const agent = vi.fn(async () => ({
+      text: "found it",
+      toolCalls: [{ name: "search", args: { q: "x" } }],
+    }));
+    const config = makeConfig({ agent, testCases: [deterministicCase] });
+
+    const { results, exitCode } = await runTests(config);
+
+    expect(agent).toHaveBeenCalledWith("What is testing?", { testCase: deterministicCase });
+    expect(results[0].assertionResults?.[0].passed).toBe(true);
+    expect(exitCode).toBe(0);
+  });
+
+  it("runs beforeEach, the agent, checks, then afterEach, in order", async () => {
+    const calls: string[] = [];
+    const config = makeConfig({
+      testCases: [
+        makeTestCase({ assertions: [{ type: "check", name: "dbState" }] }),
+      ],
+      beforeEach: async () => void calls.push("beforeEach"),
+      agent: async () => {
+        calls.push("agent");
+        return "Testing is verifying software.";
+      },
+      checks: {
+        dbState: () => {
+          calls.push("check");
+          return true;
+        },
+      },
+      afterEach: async (_tc, result) => void calls.push(`afterEach:${result.passed}`),
+    });
+
+    await runTests(config);
+
+    expect(calls).toEqual(["beforeEach", "agent", "check", "afterEach:true"]);
+  });
+
+  it("fails the test case and skips the agent when beforeEach throws", async () => {
+    const agent = vi.fn(async () => "x");
+    const afterEach = vi.fn();
+    const config = makeConfig({
+      agent,
+      testCases: [deterministicCase],
+      beforeEach: async () => {
+        throw new Error("seed failed");
+      },
+      afterEach,
+    });
+
+    const { results, exitCode } = await runTests(config);
+
+    expect(agent).not.toHaveBeenCalled();
+    expect(afterEach).toHaveBeenCalled();
+    expect(results[0].passed).toBe(false);
+    expect(results[0].assertionResults?.[0].message).toBe("beforeEach failed: seed failed");
+    expect(exitCode).toBe(1);
+  });
+
+  it("fails the test case when afterEach throws", async () => {
+    const config = makeConfig({
+      afterEach: async () => {
+        throw new Error("rollback failed");
+      },
+    });
+
+    const { results } = await runTests(config);
+
+    expect(results[0].passed).toBe(false);
+    expect(results[0].criteriaResults[0].reasoning).toBe("afterEach failed: rollback failed");
+  });
+
+  it("marks assertions failed when the agent throws", async () => {
+    const config = makeConfig({
+      agent: async () => {
+        throw new Error("boom");
+      },
+      testCases: [deterministicCase],
+    });
+
+    const { results } = await runTests(config);
+
+    expect(results[0].assertionResults?.[0]).toMatchObject({
+      passed: false,
+      message: "Test execution failed",
+    });
+  });
+});
