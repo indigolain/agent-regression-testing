@@ -22,6 +22,7 @@ export default withMermaid(
             { text: "Test Cases & Scoring", link: "/guide/test-cases-and-scoring" },
             { text: "Choosing a Judge", link: "/guide/judges" },
             { text: "Deterministic Assertions", link: "/guide/assertions" },
+            { text: "Results Dashboard", link: "/guide/dashboard" },
           ],
         },
         {

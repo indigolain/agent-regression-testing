@@ -6,6 +6,10 @@
 
 Scaffolds default `config.yml` and `test-cases.json` files. Skips files that already exist.
 
+### `npx agent-regression-testing dashboard [dir] [--out file] [--title text] [--max-runs n]`
+
+Builds an HTML [dashboard](/guide/dashboard) from the `results-*.json` files in `dir` (default: the current directory) and writes it to `dir/dashboard.html`, or to `--out`.
+
 ## Functions
 
 ### `init(options?)`
@@ -61,6 +65,22 @@ Generates a markdown summary report.
 ### `loadBaseline(filePath)` / `saveBaseline(filePath, results)` / `backupBaseline(filePath)`
 
 Baseline file management utilities.
+
+### `writeDashboard(outputDir, options?)`
+
+Loads the run history in `outputDir` and writes the [dashboard](/guide/dashboard) to `options.outPath` (default `outputDir/dashboard.html`). Returns the path written. Options: `title`, `maxRuns` (default 30), `outPath`.
+
+### `generateDashboard(runs, options?)`
+
+Returns the dashboard HTML for an array of `DashboardRun` objects (`{ id, timestamp, results }`), so you can load runs from anywhere: a database, an artifact store, several folders.
+
+### `loadRunHistory(outputDir)`
+
+Reads every `results-<timestamp>.json` file in `outputDir` and returns them as `DashboardRun[]`, oldest first. Unreadable files are skipped with a warning.
+
+### `buildDashboardModel(runs, options?)`
+
+The numbers behind the dashboard, without the HTML: a summary per run, a test × run matrix, the most-failing assertions, and the test cases that started failing in the latest run. Useful for your own reports or alerts.
 
 ### `withRetry(fn, config?)`
 
