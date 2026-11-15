@@ -19,6 +19,19 @@ LLM-as-judge is good at judging *what the agent said*. To check *what the agent 
 
 In test case JSON, `expectedCriteria` and `keywords` default to `[]`, `minResponseLength` to `0`, and `category` to `"general"`, so a test case can consist of assertions only. A suite where no test case has criteria needs no judge at all.
 
+Each assertion type reads a different part of the run:
+
+```mermaid
+flowchart LR
+    CALLS["AgentRun.toolCalls"] --> TC["toolCalled"]
+    CALLS --> TN["toolNotCalled"]
+    CALLS --> TO["toolOrder"]
+    CALLS --> SK["skillTriggered"]
+    TXT["AgentRun.text"] --> RX["regex"]
+    RUN["the whole AgentRun"] --> CK["check"]
+    DB[("your database,<br/>files, APIs")] --> CK
+```
+
 ## Reporting a trace from your agent
 
 Assertions on tools and skills need to know what the agent called. Have your agent function return an `AgentRun` instead of a string:
@@ -58,6 +71,17 @@ const myTracedAgent: TracedAgentFunction = async (question) => {
 | `regex` | `pattern`, `flags?` | The response text matches |
 | `check` | `name`, `params?` | The [check function](#checking-database-or-other-state) registered as `name` passes |
 
+`toolOrder` looks for the names as a subsequence. For `"names": ["lookup_order", "issue_refund"]`:
+
+```mermaid
+flowchart LR
+    A["Skill"] --> B["lookup_order ✓"] --> C["log"] --> D["issue_refund ✓"]
+    style B stroke-width:3px
+    style D stroke-width:3px
+```
+
+The `log` call in between doesn't matter, but the order does: `issue_refund` followed by `lookup_order` would fail.
+
 `args` is a partial match: every key you give must deep-equal the call's argument, and extra arguments are ignored. Arrays must match element by element.
 
 Every assertion also takes an optional `description`, used as its label in reports and baseline comparisons.
@@ -91,6 +115,31 @@ const config: RunnerConfig = {
 ```
 
 A check returns a boolean or `{ passed, message? }`. A check that throws, or a name with no registered check, fails the assertion with an explanatory message.
+
+Each test case runs in this order:
+
+```mermaid
+sequenceDiagram
+    participant R as Runner
+    participant H as Hooks
+    participant A as Agent
+    participant C as Checks
+    participant J as Judge
+    R->>H: beforeEach
+    Note over H: seed DB
+    R->>A: question
+    A-->>R: AgentRun
+    loop assertions, in listed order
+        R->>C: check(run, params)
+        C-->>R: passed?
+    end
+    R->>J: criteria
+    J-->>R: verdicts
+    R->>H: afterEach
+    Note over H: reset DB
+```
+
+Tool, skill and regex assertions are evaluated by the runner itself; only `check` assertions call into your code.
 
 Checks run after the agent answers and before `afterEach`. If `beforeEach` throws, the agent is not run and the test case fails. `afterEach` runs even when the test case errored, and a throw from it also fails the test case, since later tests could otherwise run against leftover state.
 

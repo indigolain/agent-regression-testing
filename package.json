@@ -52,9 +52,11 @@
     "@changesets/changelog-github": "1.0.1",
     "@changesets/cli": "3.0.3",
     "@types/node": "^26.0.1",
+    "mermaid": "11.17.2",
     "typescript": "^7.0.2",
     "vite": "^8.3.2",
     "vitepress": "1.6.4",
+    "vitepress-plugin-mermaid": "2.0.17",
     "vitest": "^5.0.0"
   },
   "dependencies": {

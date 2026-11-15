@@ -2,6 +2,27 @@
 
 The library accepts two judge interfaces. Supply exactly one — `structuredJudge` wins if both are set. Omitting both is fine when no test case has `expectedCriteria` (a [deterministic-only](/guide/assertions) suite); otherwise test cases with criteria fail with an error.
 
+How the two judges are called, for a test case with three criteria:
+
+```mermaid
+sequenceDiagram
+    participant R as Runner
+    participant T as evaluationLLM
+    participant S as structuredJudge
+    Note over R,T: Text judge: one call per criterion
+    R->>T: prompt for criterion 1
+    T-->>R: "MET: YES / REASONING: ..."
+    Note over R: wait interCallDelay
+    R->>T: prompt for criterion 2
+    T-->>R: "MET: NO / REASONING: ..."
+    Note over R: wait interCallDelay
+    R->>T: prompt for criterion 3
+    T-->>R: "MET: YES / REASONING: ..."
+    Note over R,S: Structured judge: one call for all criteria
+    R->>S: { question, response, criteria: [1, 2, 3] }
+    S-->>R: [verdict 1, verdict 2, verdict 3]
+```
+
 ## `evaluationLLM` — text in, text out
 
 ```typescript

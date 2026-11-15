@@ -1,0 +1,9 @@
+/*
+ * Mermaid renders node labels as <p> inside the SVG. The theme's paragraph
+ * styles (28px line height, vertical margins) make them taller than the box
+ * Mermaid measured, which clips multi-line labels.
+ */
+.vp-doc .mermaid p {
+  margin: 0;
+  line-height: 1.5;
+}
