@@ -205,6 +205,13 @@ function validateConfig(raw: Record<string, unknown>): ConfigFile {
     config.saveResults = raw.saveResults;
   }
 
+  if (raw.dashboard !== undefined) {
+    if (typeof raw.dashboard !== "boolean") {
+      throw new Error("dashboard must be a boolean");
+    }
+    config.dashboard = raw.dashboard;
+  }
+
   if (raw.outputDir !== undefined) {
     if (typeof raw.outputDir !== "string") {
       throw new Error("outputDir must be a string");

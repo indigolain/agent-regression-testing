@@ -7,6 +7,7 @@ import {
   toAgentRun,
 } from "./evaluator.js";
 import { assertionLabel } from "./assertions.js";
+import { writeDashboard } from "./dashboard.js";
 import { withRetry } from "./retry.js";
 import type { EvaluationResult, RunnerConfig, TestCase } from "./types.js";
 
@@ -100,6 +101,11 @@ export async function runTests(config: RunnerConfig): Promise<{
     const reportPath = outputPath.replace(".json", ".md");
     await fs.writeFile(reportPath, report);
     console.log(`Report saved to: ${reportPath}\n`);
+
+    if (config.dashboard) {
+      const dashboardPath = await writeDashboard(config.outputDir);
+      console.log(`Dashboard saved to: ${dashboardPath}\n`);
+    }
   }
 
   // Determine exit code
