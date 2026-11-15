@@ -295,6 +295,11 @@ export interface RunnerConfig extends EvaluationConfig {
   baseline?: EvaluationResult[];
   saveResults?: boolean;
   outputDir?: string;
+  /**
+   * Also write `dashboard.html` to `outputDir` after saving results, covering
+   * every saved run there. Requires `saveResults` and `outputDir`.
+   */
+  dashboard?: boolean;
 }
 
 /**
@@ -312,6 +317,7 @@ export interface ConfigFile {
   skillDetection?: SkillDetection;
   saveResults?: boolean;
   outputDir?: string;
+  dashboard?: boolean;
   testCasesPath?: string;
   baselinePath?: string;
 }

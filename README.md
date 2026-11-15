@@ -35,6 +35,7 @@ flowchart LR
 - **Keyword matching** — checks for expected keywords in responses
 - **Deterministic assertions** — assert which tools the agent called (and with what arguments, in what order), which skill it triggered, regex matches, and custom checks such as database state
 - **Baseline regression detection** — compares results against a saved baseline to detect regressions
+- **Results dashboard** — a self-contained HTML page with pass-rate trends, a test-by-run matrix, the most-failing assertions, and a drill-down into every run
 - **YAML configuration** — define scoring weights, thresholds, retry settings, and file paths in a config file; test cases and baseline are loaded automatically
 - **Dependency injection** — consumers inject their own LLM and agent via simple function signatures
 - **Two judge interfaces** — a text LLM judge, or a structured judge that scores every criterion in one call and reports calibrated confidence
@@ -99,12 +100,21 @@ A Markdown report for every run. In this excerpt the judge is satisfied with the
   <img src="docs/public/media/report-failure.png" width="800" alt="Report excerpt: the judge marks both criteria as met, but the toolCalled issue_refund assertion fails because the call had orderId 456, the database check shows order 123 still shipped, and both are listed as assertions now failing against the baseline">
 </p>
 
+## Dashboard
+
+Set `dashboard: true` in the config, or run `npx agent-regression-testing dashboard <results dir>`, to turn saved runs into a single HTML page:
+
+<p align="center">
+  <img src="docs/public/media/dashboard.png" width="800" alt="Dashboard showing the latest pass rate, a pass rate and average score trend over 14 runs, a test case by run matrix where refund-flow starts failing at run 12, and the most-failing assertions">
+</p>
+
 ## Learn more
 
 - [Getting Started](https://indigolain.github.io/agent-regression-testing/guide/getting-started): the full walkthrough
 - [Test Cases & Scoring](https://indigolain.github.io/agent-regression-testing/guide/test-cases-and-scoring): fields, how scores are calculated, baselines
 - [Choosing a Judge](https://indigolain.github.io/agent-regression-testing/guide/judges): `evaluationLLM` vs. `structuredJudge`
 - [Deterministic Assertions](https://indigolain.github.io/agent-regression-testing/guide/assertions): tool calls, skills, and database checks
+- [Results Dashboard](https://indigolain.github.io/agent-regression-testing/guide/dashboard): trends and drill-downs across runs
 - [API](https://indigolain.github.io/agent-regression-testing/reference/api) and [Configuration](https://indigolain.github.io/agent-regression-testing/reference/configuration) reference
 
 ## Development

@@ -157,3 +157,7 @@ Each test case is logged as it runs, followed by the baseline comparison:
 ![Terminal output of a run: greeting and order-status pass, refund-flow fails, and one regression is detected against the baseline](/media/terminal-run.png)
 
 The exit code is `1` when any test case fails or regresses, so the script can gate CI directly. The Markdown report saved next to the results explains every verdict. See [Run output](/guide/test-cases-and-scoring#run-output).
+
+## 6. Track runs over time
+
+Add `dashboard: true` to the config, and every run also rewrites a `dashboard.html` next to the results, covering every run saved there. See [Results Dashboard](/guide/dashboard).

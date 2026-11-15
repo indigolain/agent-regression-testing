@@ -40,6 +40,19 @@ export {
 } from "./assertions.js";
 export { loadBaseline, saveBaseline, backupBaseline } from "./baseline.js";
 export { runTests } from "./runner.js";
+export {
+  buildDashboardModel,
+  generateDashboard,
+  loadRunHistory,
+  writeDashboard,
+  type AssertionFailureSummary,
+  type DashboardModel,
+  type DashboardOptions,
+  type DashboardRun,
+  type MatrixCell,
+  type RunSummary,
+  type TestRow,
+} from "./dashboard.js";
 export { withRetry } from "./retry.js";
 export { loadConfig, parseConfig, normalizeTestCases } from "./config.js";
 export { init, type InitOptions, type InitResult } from "./init.js";

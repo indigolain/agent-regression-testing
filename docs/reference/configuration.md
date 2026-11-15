@@ -20,5 +20,6 @@ All fields are optional. Defaults are applied by the library when not specified.
 | `interCallDelay` | `number` | `500` | Delay in ms between criterion evaluations (`evaluationLLM` only) |
 | `saveResults` | `boolean` | — | Whether to save results and reports to disk |
 | `outputDir` | `string` | — | Directory for result and report files |
+| `dashboard` | `boolean` | `false` | Rewrite `dashboard.html` in `outputDir` after each run ([Results Dashboard](/guide/dashboard)) |
 | `testCasesPath` | `string` | — | Path to test cases JSON file (auto-loaded by `loadConfig`) |
 | `baselinePath` | `string` | — | Path to baseline JSON file (auto-loaded by `loadConfig`) |

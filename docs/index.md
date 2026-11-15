@@ -23,6 +23,9 @@ features:
   - title: Baseline regressions
     details: Compare each run against a saved baseline and fail CI when scores drop or assertions stop passing.
     link: /guide/test-cases-and-scoring#baselines-and-regressions
+  - title: Results dashboard
+    details: One self-contained HTML page with pass-rate trends, a test-by-run matrix, the most-failing assertions, and a drill-down into every run.
+    link: /guide/dashboard
   - title: Bring your own models
     details: Inject your agent and judge as plain functions. Thresholds, weights and file paths live in a YAML config.
     link: /reference/configuration
