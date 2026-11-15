@@ -77,6 +77,21 @@ console.log(report);
 process.exit(exitCode);
 ```
 
+## Assertion types
+
+Assertions check what the agent *did*, deterministically, alongside the LLM judge:
+
+| Type | Passes when |
+|------|-------------|
+| `toolCalled` | A tool was called, optionally with matching `args` or an exact number of `times` |
+| `toolNotCalled` | A tool was never called (with matching `args`, if given) |
+| `toolOrder` | Tools were called in a given order; other calls may come in between |
+| `skillTriggered` | A skill was invoked |
+| `regex` | The response text matches a pattern |
+| `check` | Your own function passes, e.g. a database query confirming the agent updated a row |
+
+Tool and skill assertions need your agent to return its tool calls. See [Deterministic Assertions](https://indigolain.github.io/agent-regression-testing/guide/assertions) for the fields and details.
+
 ## What you get
 
 A Markdown report for every run. In this excerpt the judge is satisfied with the answer, but the assertions catch that the agent refunded the wrong order and never updated the database:
