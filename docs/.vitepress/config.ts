@@ -43,5 +43,7 @@ export default withMermaid(
       search: { provider: "local" },
       outline: "deep",
     },
+    // Mermaid 12 changed its defaults (neo look, ELK layout); keep the classic style.
+    mermaid: { theme: "default", look: "classic", layout: "dagre" },
   }),
 );
