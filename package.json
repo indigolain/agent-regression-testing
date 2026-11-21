@@ -52,7 +52,7 @@
     "@changesets/changelog-github": "1.0.1",
     "@changesets/cli": "3.0.3",
     "@types/node": "^26.0.1",
-    "mermaid": "11.17.2",
+    "mermaid": "12.3.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.2",
     "vitepress": "1.6.4",
@@ -62,5 +62,11 @@
   "dependencies": {
     "yaml": "2.9.1"
   },
-  "homepage": "https://indigolain.github.io/agent-regression-testing/"
+  "homepage": "https://indigolain.github.io/agent-regression-testing/",
+  "pnpm": {
+    "overrides": {
+      "vitepress>vite": "^6.4.4",
+      "@vitejs/plugin-vue>vite": "^6.4.4"
+    }
+  }
 }
